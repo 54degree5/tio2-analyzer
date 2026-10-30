@@ -2,9 +2,9 @@
 (function () {
 'use strict';
 const C = window.Core;
-const COLORS = C.EXPERIMENT_COLORS;
+const COLORS = ['#197b70', '#9a7028', '#527fa5', '#ac6255', '#7d709f', '#5f8872'];
 const MAXSIDE = 1000;
-const STATUS_IDLE = "Нажмите '+' для нового эксперимента";
+const STATUS_IDLE = "Все расчёты выполняются на вашем устройстве";
 const $ = (s, r) => (r || document).querySelector(s);
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -63,10 +63,10 @@ function dialog({ icon, text, input, buttons }) {
 const alertBox = (text) => ($('#modal').classList.contains('on') ? Promise.resolve(true)
   : dialog({ icon: '⚠️', text, buttons: [{ label: 'OK', value: true }] }));
 const confirmBox = (text) => dialog({
-  icon: '❔', text, buttons: [{ label: 'No', value: false }, { label: 'Yes', value: true }],
+  icon: '❔', text, buttons: [{ label: 'Отмена', value: false }, { label: 'Удалить', value: true }],
 });
 const promptBox = (text, init) => dialog({
-  text, input: init, buttons: [{ label: 'Cancel', value: null }, { label: 'OK', value: 'ok' }],
+  text, input: init, buttons: [{ label: 'Отмена', value: null }, { label: 'OK', value: 'ok' }],
 });
 
 /* ============================ widgets ============================ */
@@ -156,8 +156,6 @@ class Spin {
   bump(d) { this.commit(); this.set(this._v + d * this.step, true); }
 }
 
-const group = (title, ...kids) => h('section', { class: 'grp' }, h('span', { class: 'gt' }, title), h('div', { class: 'col' }, kids));
-
 /* ============================ image loading ============================ */
 async function loadFrame(file) {
   let src, w, hh, close = () => {};
@@ -194,12 +192,12 @@ function resized(fr, w, hh) {
 }
 
 /* ============================ experiment ============================ */
-const CH_ITEMS = ['Яркость (grayscale)', 'По длине волны (Бугера—Ламберта—Бера)', 'Насыщенность (Saturation)'];
+const CH_ITEMS = ['Яркость', 'Цветовой канал по λ', 'Насыщенность'];
 
 class Experiment {
   constructor() {
     this.custom = ''; this.frames = []; this.k = null; this.tHalf = null;
-    this.times = []; this.norm = []; this.pidx = 0; this.autoThr = null; this.timer = null; this.demoIdx = 0;
+    this.times = []; this.norm = []; this.pidx = 0; this.autoThr = null; this.timer = null; this.demoIdx = 0; this.isDemo = false;
     this.raf = 0;
     this.build();
   }
@@ -207,8 +205,8 @@ class Experiment {
     const E = this;
     E.file = h('input', { type: 'file', multiple: '', accept: 'image/*,.tif,.tiff', hidden: '' });
     E.file.addEventListener('change', () => { const f = [...E.file.files]; E.file.value = ''; E.addFiles(f); });
-    E.btnAdd = h('button', { class: 'q accent', type: 'button', onclick: () => E.file.click() }, '📂  ДОБАВИТЬ ФОТОГРАФИИ');
-    E.btnDemo = h('button', { class: 'q', type: 'button', title: 'Демо', onclick: () => E.demo() }, '🧪  Демо');
+    E.btnAdd = h('button', { class: 'q accent', type: 'button', onclick: () => E.file.click() }, '＋ Добавить фотографии');
+    E.btnDemo = h('button', { class: 'q', type: 'button', title: 'Демо', onclick: () => E.demo() }, 'Демо');
 
     E.tf = new Viewer(); E.tl = new Viewer();
     E.cnt = h('div', { class: 'cnt' });
@@ -233,35 +231,55 @@ class Experiment {
     E.chk = h('label', { class: 'chk' }, E.chkIn, h('span', { class: 'bx' }), 'Авто');
     E.rng.disabled = true; E.setRng(50);
 
-    E.lblK = h('span', { class: 'result' }, 'k = —');
-    E.lblTh = h('span', { class: 'result' }, 't₁/₂ = —');
+    E.lblK = h('span', { class: 'result' }, '—');
+    E.lblTh = h('span', { class: 'result' }, '—');
     E.info = h('div', { class: 'sci' });
-    E.btnDel = h('button', { class: 'q danger', type: 'button', onclick: () => App.del(E) }, '🗑  Удалить эксперимент');
+    E.btnDel = h('button', { class: 'q danger', type: 'button', onclick: () => App.del(E) }, 'Удалить эксперимент');
 
-    const left = h('div', { class: 'left' },
-      E.file,
+    E.sourceBadge = h('span', { class: 'tag' }, 'Нет фотографий');
+    const upload = h('section', { class: 'upload-card' }, E.file,
+      h('div', { class: 'upload-heading' }, h('span', { class: 'step' }, '01'), h('span', null, 'Ваша серия фотографий'), E.sourceBadge),
       h('div', { class: 'addrow' }, E.btnAdd, E.btnDemo),
+      h('p', { class: 'hint' }, 'Выберите серию кадров в порядке съёмки. Можно перетащить файлы сюда.'));
+    const frames = h('section', { class: 'frames-card' },
       h('div', { class: 'thumbs' }, E.tf.el, E.cnt, E.tl.el),
-      h('div', { class: 'nav' }, E.bp, E.lblNav, E.bn, E.bPlay),
-      group('⚙  Параметры анализа',
-        h('div', { class: 'row' }, h('span', null, 'Δt между фото:'), E.spinDt.el),
-        h('div', { class: 'row' }, h('span', null, 'Канал:'), E.sel),
-        E.wlRow,
-        h('div', { class: 'row' }, h('span', null, 'Порог OD:'), E.rng, E.tv, E.chk)),
-      group('📐  Научный аппарат',
-        ['A = −log₁₀(I/I₀)  (Бугера—Ламберта—Бера)', 'I₀ = 95-й перцентиль яркости foreground',
-          'ln(<A>(t)/<A>(0)) = −k·t  (кинетика 1-го порядка)', 't₁/₂ = ln(2)/k ≈ 0.693/k']
-          .map((t) => h('div', { class: 'formula-l' }, t))),
-      h('div', { class: 'results' }, E.lblK, E.lblTh),
-      E.info,
-      h('div', { style: 'display:flex;justify-content:flex-end' }, E.btnDel),
-      h('div', { style: 'flex:1' }));
+      h('div', { class: 'nav' }, E.bp, E.lblNav, E.bn, E.bPlay));
+    const settings = h('details', { class: 'grp settings', open: '' },
+      h('summary', null, h('span', { class: 'step' }, '02'), 'Параметры анализа'),
+      h('div', { class: 'col' },
+        h('div', { class: 'row' }, h('span', null, 'Интервал между фото'), E.spinDt.el),
+        h('div', { class: 'row' }, h('span', null, 'Канал анализа'), E.sel), E.wlRow,
+        h('div', { class: 'row threshold-row' }, h('span', null, 'Порог пятна'), E.tv, E.chk, E.rng),
+        h('p', { class: 'hint' }, 'Автопорог отделяет пятно от фона. Для ручной настройки отключите «Авто».')));
+    const science = h('details', { class: 'grp science' }, h('summary', null, 'Как это считается'),
+      h('div', { class: 'col' }, ['A = −log₁₀(I/I₀)', 'I₀ — 95-й перцентиль яркости фона и образца',
+        'ln(⟨A⟩(t)/⟨A⟩(0)) = −k·t', 't₁/₂ = ln(2)/k'].map(t => h('div', { class: 'formula-l' }, t)),
+        h('p', { class: 'hint' }, 'Снимайте при одинаковом освещении и настройках камеры. Цветовой канал по λ выбирает R, G или B; это не спектральное измерение.')));
+    const metrics = h('div', { class: 'results', 'aria-label': 'Результаты выбранного эксперимента' },
+      h('div', { class: 'metric' }, h('span', { class: 'metric-label' }, 'Константа k, с⁻¹'), E.lblK, h('span', { class: 'metric-note' }, 'Скорость изменения красителя')),
+      h('div', { class: 'metric' }, h('span', { class: 'metric-label' }, 'Время t½'), E.lblTh, h('span', { class: 'metric-note' }, 'Время снижения сигнала вдвое')));
+    const rename = h('button', { class: 'q text-button', type: 'button', onclick: () => App.rename(App.exps.indexOf(E)) }, 'Переименовать');
+    const actions = h('div', { class: 'experiment-actions' }, rename, E.btnDel);
+    const left = h('div', { class: 'left' }, upload, metrics, frames, settings, science, actions);
 
     E.vo = new Viewer(); E.vm = new Viewer(); E.vr = new Viewer();
-    const prev = h('div', { class: 'prev' });
-    [['Оригинал', E.vo], ['Маска пятна (A > порог)', E.vm], ['Детекция пятна', E.vr]]
-      .forEach(([t, v]) => prev.append(h('div', { class: 'cap' }, t), v.el));
-
+    E.vo.el.classList.add('active');
+    const viewers = [E.vo, E.vm, E.vr];
+    const modes = ['Оригинал', 'Маска пятна', 'Детекция'];
+    const modeButtons = modes.map((name, i) => h('button', {
+      class: 'preview-mode' + (i === 0 ? ' active' : ''), type: 'button', 'aria-pressed': String(i === 0),
+      onclick: () => {
+        viewers.forEach((v, j) => { v.el.classList.toggle('active', j === i); v.paint(); });
+        modeButtons.forEach((btn, j) => { btn.classList.toggle('active', j === i); btn.setAttribute('aria-pressed', String(j === i)); });
+      },
+    }, name));
+    E.previewEmpty = h('div', { class: 'preview-empty' }, h('span', { 'aria-hidden': 'true' }, '◎'), h('strong', null, 'Здесь появится ваш образец'), h('span', null, 'Добавьте фотографии или откройте демо'));
+    const prev = h('section', { class: 'prev' },
+      h('div', { class: 'preview-heading' }, h('div', null, h('span', { class: 'eyebrow' }, 'ОТ СВЕТА К ДАННЫМ'), h('h2', null, 'Образец под наблюдением')), h('span', { class: 'live-dot', 'aria-hidden': 'true' })),
+      h('div', { class: 'preview-modes', 'aria-label': 'Режим просмотра' }, modeButtons),
+      h('div', { class: 'preview-stage' }, E.vo.el, E.vm.el, E.vr.el, E.previewEmpty),
+      h('div', { class: 'preview-caption' }, h('span', null, 'Исходный кадр → выделение пятна → анализ'), h('span', null, 'TiO₂ / LAB')),
+      E.info);
     E.root = h('div', { class: 'exp-root', role: 'tabpanel' }, left, prev);
     E.updWl();
   }
@@ -293,7 +311,7 @@ class Experiment {
     for (const f of files) { try { frames.push(await loadFrame(f)); } catch (e) { /* skip unreadable */ } }
     App.status(STATUS_IDLE);
     if (!frames.length) { alertBox('Не удалось открыть изображения'); return; }
-    this.setFrames(frames);
+    this.isDemo = false; this.setFrames(frames);
   }
   async demo() {
     const def = C.DEMOS[this.demoIdx++ % C.DEMOS.length];
@@ -303,11 +321,14 @@ class Experiment {
     this.btnDemo.disabled = false; App.status(STATUS_IDLE);
     if (!this.custom) this.custom = def.name;
     this.applyParams({ dt: def.dt, ch: def.ch, wl: def.wl });
-    this.setFrames(frames);
+    this.isDemo = true; this.setFrames(frames);
     App.renderTabs();
   }
   setFrames(frames) {
     this.stop(); this.frames = frames; this.pidx = 0; this.autoThr = null;
+    this.sourceBadge.textContent = this.isDemo ? 'Демо · синтетические данные' : `${frames.length} фото`;
+    this.sourceBadge.classList.toggle('demo-badge', this.isDemo);
+    this.previewEmpty.hidden = !!frames.length;
     this.updThumbs(); this.run();
   }
   updThumbs() {
@@ -404,7 +425,7 @@ class Experiment {
   updPrev() {
     if (!this.frames.length) return;
     const fr = this.frames[this.pidx];
-    this.lblNav.textContent = `Фото: ${this.pidx + 1} / ${this.frames.length}`;
+    this.lblNav.textContent = `Кадр ${this.pidx + 1} из ${this.frames.length}`;
     const cp = this.chParams(); if (!cp) return;
     const thr = this.analysisThreshold();
     const r = C.analyze(fr, cp[0], cp[1], thr, false);
@@ -416,7 +437,7 @@ class Experiment {
   }
   run() {
     if (this.frames.length < 2) {
-      this.lblK.textContent = 'k = — (≥2 фото)'; this.lblTh.textContent = 't₁/₂ = —';
+      this.lblK.textContent = 'Нужно ≥2 фото'; this.lblTh.textContent = '—';
       this.k = null; this.tHalf = null; this.times = []; this.norm = [];
       if (this.frames.length) this.updPrev();
       App.updRes(); return;
@@ -432,8 +453,8 @@ class Experiment {
     let kin = C.kinetics(mods, dt);
     if (kin.k === null || kin.k <= 0) kin = C.kinetics(modsFg, dt);
     this.k = kin.k; this.tHalf = kin.tHalf; this.times = kin.times; this.norm = kin.norm;
-    this.lblK.textContent = kin.k !== null ? `k = ${C.fmtE(kin.k, 6)} с⁻¹` : 'k = — (нет тренда)';
-    this.lblTh.textContent = `t₁/₂ = ${C.fmtHalf(kin.tHalf)}`;
+    this.lblK.textContent = kin.k !== null ? C.fmtE(kin.k, 3) : 'Нет тренда';
+    this.lblTh.textContent = C.fmtHalf(kin.tHalf);
     this.updPrev(); App.updRes();
   }
   destroy() { this.stop(); this.root.remove(); }
@@ -457,8 +478,8 @@ class Plot {
     }
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#1e1e1e'; ctx.fillRect(0, 0, W, H);
-    const ml = 70, mr = 20, mt = 30, mb = 50, pw = W - ml - mr, ph = H - mt - mb;
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    const ml = W < 400 ? 48 : 58, mr = 18, mt = 18, mb = 50, pw = W - ml - mr, ph = H - mt - mb;
     if (pw < 50 || ph < 50) return;
     let mxT = 1.0, mxA = 1.05;
     for (const d of this.ds) {
@@ -466,24 +487,24 @@ class Plot {
       for (const a of d.areas) if (a > mxA) mxA = a;
     }
     const mono = 'Consolas, "SF Mono", Menlo, monospace', sans = '-apple-system, "Segoe UI", Arial, sans-serif';
-    ctx.lineWidth = 1; ctx.strokeStyle = '#b0b0b0'; ctx.setLineDash([]);
+    ctx.lineWidth = 1; ctx.strokeStyle = '#a3b4b0'; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(ml, mt + ph + .5); ctx.lineTo(ml + pw, mt + ph + .5); ctx.moveTo(ml + .5, mt); ctx.lineTo(ml + .5, mt + ph); ctx.stroke();
-    ctx.font = `10px ${mono}`; ctx.fillStyle = '#b0b0b0'; ctx.textBaseline = 'middle';
+    ctx.font = `10px ${mono}`; ctx.fillStyle = '#667d76'; ctx.textBaseline = 'middle';
     for (let i = 0; i < 6; i++) {
       const val = mxA * i / 5, y = mt + ph - Math.trunc(ph * i / 5);
-      ctx.strokeStyle = '#404040'; ctx.setLineDash([1, 2]); ctx.beginPath(); ctx.moveTo(ml, y + .5); ctx.lineTo(ml + pw, y + .5); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = '#e4ede9'; ctx.setLineDash([1, 2]); ctx.beginPath(); ctx.moveTo(ml, y + .5); ctx.lineTo(ml + pw, y + .5); ctx.stroke(); ctx.setLineDash([]);
       ctx.textAlign = 'right'; ctx.fillText(val.toFixed(2), ml - 6, y);
     }
     const nxt = mxT > 0 ? Math.min(6, Math.max(2, Math.trunc(mxT / 100) + 1)) : 2;
     for (let i = 0; i <= nxt; i++) {
       const val = mxT * i / nxt, x = ml + Math.trunc(pw * i / nxt);
-      ctx.strokeStyle = '#404040'; ctx.setLineDash([1, 2]); ctx.beginPath(); ctx.moveTo(x + .5, mt); ctx.lineTo(x + .5, mt + ph); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = '#e4ede9'; ctx.setLineDash([1, 2]); ctx.beginPath(); ctx.moveTo(x + .5, mt); ctx.lineTo(x + .5, mt + ph); ctx.stroke(); ctx.setLineDash([]);
       ctx.textAlign = 'center'; ctx.fillText(val.toFixed(0), x, mt + ph + 13);
     }
-    ctx.fillStyle = '#d0d8e0'; ctx.font = `12px ${sans}`; ctx.textAlign = 'center';
+    ctx.fillStyle = '#667d76'; ctx.font = `12px ${sans}`; ctx.textAlign = 'center';
     ctx.fillText('Время, с', ml + pw / 2, mt + ph + 38);
     ctx.save(); ctx.translate(14, mt + ph / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('<A>(t)/<A>(0)', 0, 0); ctx.restore();
-    ctx.fillStyle = '#e8e8e8'; ctx.font = `bold 13px ${sans}`; ctx.fillText('Кинетика деградации', ml + pw / 2, 15);
+
 
     const cur = App.exps[App.cur];
     const pts = [];
@@ -499,7 +520,7 @@ class Plot {
       for (const [x, y] of p) { ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); }
       if (d.exp === cur && d.exp.frames.length) {
         const q = p[clamp(d.exp.pidx, 0, p.length - 1)];
-        ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(q[0], q[1], 6, 0, 7); ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#163c33'; ctx.beginPath(); ctx.arc(q[0], q[1], 6, 0, 7); ctx.stroke();
       }
       p.forEach((q, i) => pts.push({ x: q[0], y: q[1], d, i }));
     }
@@ -507,14 +528,14 @@ class Plot {
       let best = null, bd = 14;
       for (const q of pts) { const dd = Math.hypot(q.x - this.hover.x, q.y - this.hover.y); if (dd < bd) { bd = dd; best = q; } }
       if (best) {
-        ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(best.x, best.y, 6, 0, 7); ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#163c33'; ctx.beginPath(); ctx.arc(best.x, best.y, 6, 0, 7); ctx.stroke();
         const lines = [best.d.name, `t = ${best.d.times[best.i].toFixed(0)} с`, `<A>/<A>₀ = ${best.d.areas[best.i].toFixed(3)}`];
         ctx.font = `11px ${sans}`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
         const bw = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 14, bh = lines.length * 15 + 8;
         let bx = best.x + 12, by = best.y - bh - 8;
-        if (bx + bw > W - 4) bx = best.x - bw - 12;
+        if (bx + bw > W - 4) bx = Math.max(4, best.x - bw - 12);
         if (by < 4) by = best.y + 12;
-        ctx.fillStyle = '#2b2b2b'; ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+        ctx.fillStyle = '#163c33'; ctx.strokeStyle = '#163c33'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.roundRect(bx + .5, by + .5, bw, bh, 4); ctx.fill(); ctx.stroke();
         lines.forEach((l, i) => { ctx.fillStyle = i ? '#e8e8e8' : best.d.color; ctx.fillText(l, bx + 7, by + 5 + i * 15); });
       }
@@ -527,7 +548,7 @@ const App = {
   exps: [], cur: -1, plot: null,
   status(t) { $('#status').textContent = t; },
   label(e, i) {
-    const base = `Эксперимент №${String(i + 1).padStart(2, '0')}`;
+    const base = `Эксперимент ${String(i + 1).padStart(2, '0')}`;
     return e.custom ? `${base} — ${e.custom}` : base;
   },
   parseCustom(name) {
@@ -538,15 +559,26 @@ const App = {
   renderTabs() {
     const bar = $('#tabbar'); bar.textContent = '';
     this.exps.forEach((e, i) => {
-      const t = this.label(e, i);
+      const t = e.custom || this.label(e, i);
       const el = h('button', {
         class: 'tab' + (i === this.cur ? ' sel' : ''), type: 'button', role: 'tab', 'data-t': t,
-        'aria-selected': String(i === this.cur), title: 'Двойной клик — переименовать',
+        'aria-selected': String(i === this.cur), id: `tab-${i}`, 'aria-controls': `experiment-${i}`, title: 'Двойной клик — переименовать',
+        tabindex: i === this.cur ? '0' : '-1',
+        onkeydown: ev => {
+          let target = i;
+          if (ev.key === 'ArrowRight') target = (i + 1) % this.exps.length;
+          else if (ev.key === 'ArrowLeft') target = (i + this.exps.length - 1) % this.exps.length;
+          else if (ev.key === 'Home') target = 0;
+          else if (ev.key === 'End') target = this.exps.length - 1;
+          else return;
+          ev.preventDefault(); ev.stopPropagation(); this.activate(target); $('#tabbar .sel').focus();
+        },
         onclick: () => this.activate(i), ondblclick: () => this.rename(i),
       }, t);
+      e.root.id = `experiment-${i}`; e.root.setAttribute('aria-labelledby', `tab-${i}`);
       bar.append(el);
     });
-    bar.append(h('button', { class: 'tab plus', type: 'button', 'data-t': '+', 'aria-label': 'Новый эксперимент', onclick: () => this.add() }, '+'));
+    bar.append(h('button', { class: 'tab plus', type: 'button', 'data-t': '+', 'aria-label': 'Новый эксперимент', onclick: () => this.add() }, '+ Новый'));
     const sel = bar.querySelector('.sel');
     if (sel) { const l = sel.offsetLeft, r = l + sel.offsetWidth; if (l < bar.scrollLeft) bar.scrollLeft = l - 6; else if (r > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = r - bar.clientWidth + 6; }
   },
@@ -571,7 +603,7 @@ const App = {
   },
   async rename(i) {
     const e = this.exps[i]; if (!e) return;
-    const text = await promptBox('Название:', this.label(e, i));
+    const text = await promptBox('Название эксперимента:', e.custom || this.label(e, i));
     if (text !== null && text.trim()) { e.custom = this.parseCustom(text.trim()); this.renderTabs(); this.updRes(); }
   },
   updRes() {
@@ -579,38 +611,24 @@ const App = {
     const ds = [];
     this.exps.forEach((e, i) => {
       const color = COLORS[i % COLORS.length], name = this.label(e, i);
-      const [r, g, b] = [1, 3, 5].map((o) => parseInt(color.slice(o, o + 2), 16));
-      const bg = `background:rgba(${r},${g},${b},.235)`;
-      const ms = ['Яркость', `λ=${e.spinWl.value.toFixed(0)}нм`, 'Насыщенность'][e.chIdx];
-      const td = (t, title) => h('td', { style: bg, title }, t);
-      rows.append(h('tr', { class: i === this.cur ? 'sel' : '', onclick: () => this.activate(i) },
-        td(String(i + 1)), td(name, name), td(e.k ? C.fmtE(e.k, 4) : '—'), td(C.fmtHalf(e.tHalf || null)), td(ms)));
+      const ms = ['Яркость', `λ = ${e.spinWl.value.toFixed(0)} нм`, 'Насыщенность'][e.chIdx];
+      const td = (t, label) => h('td', { 'data-label': label }, t);
+      rows.append(h('tr', { class: i === this.cur ? 'sel' : '', tabindex: '0', 'aria-label': `Открыть ${name}`, onclick: () => this.activate(i), onkeydown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); this.activate(i); } } },
+        td(String(i + 1).padStart(2, '0'), '№'),
+        td(h('span', { class: 'table-name' }, h('i', { style: `background:${color}` }), h('span', null, h('strong', null, e.custom || name), h('small', null, `${e.frames.length} фото · ${ms}`))), 'Эксперимент'),
+        td(e.k !== null ? C.fmtE(e.k, 4) : '—', 'k, с⁻¹'), td(C.fmtHalf(e.tHalf), 't₁/₂')));
       if (e.times.length && e.norm.length) ds.push({ name, color, times: e.times, areas: e.norm, exp: e });
     });
+    $('#experiment-count').textContent = this.exps.length;
+    const legend = $('#legend'); legend.textContent = '';
+    ds.forEach(d => legend.append(h('span', { class: 'legend-item' }, h('i', { style: `background:${d.color}` }), d.exp.custom || d.name)));
+    if (!this.exps.length) rows.append(h('tr', { class: 'empty-row' }, h('td', { colspan: 4 }, 'Добавьте эксперимент — здесь появятся результаты.')));
     this.plot.set(ds);
   },
 };
 
 /* ============================ boot ============================ */
 function initChrome() {
-  const win = $('#win');
-  const toggleMax = () => win.classList.toggle('max');
-  $('.lights i:nth-child(3)').addEventListener('click', toggleMax);
-  $('#titlebar').addEventListener('dblclick', toggleMax);
-
-  /* splitter */
-  const sash = $('#sash'), top = $('#top'), bottom = $('#bottom'), split = $('#split');
-  sash.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); sash.setPointerCapture(e.pointerId); sash.classList.add('drag');
-    const move = (ev) => {
-      const r = split.getBoundingClientRect();
-      const px = clamp(ev.clientY - r.top - 3, 150, r.height - 7 - 150);
-      top.style.flex = `0 0 ${px}px`; bottom.style.flex = '1 1 0';
-    };
-    const up = () => { sash.classList.remove('drag'); sash.removeEventListener('pointermove', move); sash.removeEventListener('pointerup', up); sash.removeEventListener('pointercancel', up); };
-    sash.addEventListener('pointermove', move); sash.addEventListener('pointerup', up); sash.addEventListener('pointercancel', up);
-  });
-
   /* drag & drop photos */
   let depth = 0;
   const hasFiles = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
@@ -628,7 +646,7 @@ function initChrome() {
   window.addEventListener('keydown', (e) => {
     if ($('#modal').classList.contains('on') || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target;
-    if (t && (t.tagName === 'INPUT' && t.type !== 'range' && t.type !== 'checkbox' || t.tagName === 'SELECT')) return;
+    if (t && (t.tagName === 'SUMMARY' || t.tagName === 'INPUT' && t.type !== 'range' && t.type !== 'checkbox' || t.tagName === 'SELECT')) return;
     const exp = App.exps[App.cur]; if (!exp) return;
     if (e.key === 'ArrowLeft') { e.preventDefault(); exp.nav(-1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); exp.nav(1); }

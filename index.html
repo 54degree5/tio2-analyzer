@@ -5,47 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TiO₂ Photocatalytic Degradation Analyzer</title>
 <meta name="description" content="Анализ фотокаталитической деградации красителя на TiO₂ по фотографиям: оптическая плотность, кинетика первого порядка, k и t½ — прямо в браузере.">
-<meta name="theme-color" content="#2b2b2b">
+<meta name="theme-color" content="#f5f7f6">
 <meta property="og:title" content="TiO₂ Photocatalytic Degradation Analyzer">
 <meta property="og:description" content="Оптическая плотность, кинетика 1-го порядка, k и t½ по фотографиям — в браузере.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔬%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip" href="#pane">Перейти к анализу</a>
 <div id="win">
-  <div id="titlebar">
-    <div class="lights" aria-hidden="true"><i>×</i><i>−</i><i>⤢</i></div>
-    <div class="ttl">TiO₂ Photocatalytic Degradation Analyzer</div>
-  </div>
   <div id="app">
     <header id="hdr">
-      <span class="h1">🔬&nbsp; TiO₂ Photocatalytic Degradation Analyzer</span>
-      <span class="formula">A = −log₁₀(I/I₀) | ln(&lt;A&gt;(t)/&lt;A&gt;(0)) = −k·t | t₁/₂ = ln2/k</span>
+      <a class="brand" href="./" aria-label="TiO₂ Lab — главная"><span class="brand-icon" aria-hidden="true">◉</span><span>TiO₂<span class="brand-light"> / lab</span></span></a>
+      <span class="header-caption">Фотокаталитический анализ</span>
+      <span class="privacy"><span aria-hidden="true">●</span> Фото остаются на устройстве</span>
     </header>
-    <div id="split">
-      <div id="top">
-        <div id="tabbar" role="tablist"></div>
-        <div id="pane"></div>
-      </div>
-      <div id="sash" role="separator" aria-orientation="horizontal"></div>
-      <div id="bottom">
-        <section class="grp fill">
-          <span class="gt">📊&nbsp; Результаты</span>
-          <div class="tblwrap">
-            <table class="res">
-              <colgroup><col style="width:38px"><col><col style="width:112px"><col style="width:96px"><col style="width:104px"></colgroup>
-              <thead><tr><th>№</th><th>Эксперимент</th><th>k (с⁻¹)</th><th>t₁/₂</th><th>Метод</th></tr></thead>
-              <tbody id="rows"></tbody>
-            </table>
-          </div>
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><div class="eyebrow">ИЗОБРАЖЕНИЯ → ДАННЫЕ → ОТКРЫТИЯ</div><h1 id="page-title">Увидеть реакцию.<br><span>Измерить изменение.</span></h1><p>От серии фотографий — к скорости деградации красителя.<br class="desktop-br"> Загрузите кадры, настройте анализ и сравните эксперименты.</p></div>
+        <div class="intro-note"><span class="orbit" aria-hidden="true"><i></i><i></i><i></i></span><span>Маленькая лаборатория.<br><strong>Прямо в вашем браузере.</strong></span></div>
+      </section>
+      <div id="split">
+        <section id="top" aria-label="Анализ эксперимента">
+          <div class="section-line"><h2>Рабочая область</h2><span>Начните с демо или добавьте свои фото</span></div>
+          <div id="tabbar" role="tablist" aria-label="Эксперименты"></div>
+          <div id="pane" tabindex="-1"></div>
         </section>
-        <section class="grp fill">
-          <span class="gt">📈&nbsp; Кинетика деградации</span>
-          <div class="plotwrap"><canvas id="plot"></canvas></div>
+        <section id="bottom" aria-label="Сравнение результатов">
+          <section class="grp fill chart-card"><div class="card-heading"><div><span class="eyebrow">ДИНАМИКА ПРОЦЕССА</span><h2>Кинетика деградации</h2></div><span class="tag">A / A₀</span></div><div class="plotwrap"><canvas id="plot" role="img" aria-label="График нормированной оптической плотности по времени. Численные результаты находятся в таблице экспериментов."></canvas></div><div id="legend" class="legend" aria-label="Легенда графика"></div></section>
+          <section class="grp fill comparison-card"><div class="card-heading"><div><span class="eyebrow">ВСЕ ЭКСПЕРИМЕНТЫ</span><h2>Сравнение результатов</h2></div><span id="experiment-count" class="tag">0</span></div><div class="tblwrap"><table class="res"><caption class="sr-only">Константа скорости и время полураспада для каждого эксперимента</caption><colgroup><col style="width:34px"><col><col style="width:110px"><col style="width:94px"></colgroup><thead><tr><th scope="col">№</th><th scope="col">Эксперимент</th><th scope="col">k, с⁻¹</th><th scope="col">t₁/₂</th></tr></thead><tbody id="rows"></tbody></table></div></section>
         </section>
       </div>
-    </div>
-    <div id="status">Нажмите '+' для нового эксперимента</div>
+    </main>
+    <footer><span id="status" role="status">Добавьте эксперимент, чтобы начать</span><span>TiO₂ Lab <span class="footer-dot">·</span> Свет. Цвет. Наука.</span></footer>
   </div>
 </div>
 <div id="modal"></div>
