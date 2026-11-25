@@ -1,13 +1,72 @@
-/* TiO2 Photocatalytic Degradation Analyzer — UI (web port of the PySide6 desktop app) */
+/* Spectra visual sample analyzer — UI (web port of the PySide6 desktop app) */
 (function () {
 'use strict';
 const C = window.Core;
-const COLORS = ['#197b70', '#9a7028', '#527fa5', '#ac6255', '#7d709f', '#5f8872'];
+const COLORS = ['#1938d7', '#22252d', '#7984b8', '#af6a3a', '#6d7298', '#4d7c83'];
 const MAXSIDE = 1000;
-const STATUS_IDLE = "Все расчёты выполняются на вашем устройстве";
+const STATUS_IDLE = '';
 const $ = (s, r) => (r || document).querySelector(s);
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+const I18N = {
+  ru: {
+    'header.caption':'АНАЛИЗ ИЗОБРАЖЕНИЙ','nav.workspace':'Анализ','nav.results':'Результаты','nav.method':'Демо-анализ','nav.audience':'Для кого','header.start':'Начать анализ',
+    'hero.eyebrow':'SPECTRA / АНАЛИЗ ИЗОБРАЖЕНИЙ','hero.title':'Смотрите, как меняется<br><span>цвет образца.</span>','hero.copy':'Загрузите серию снимков, сравните изменение цвета и получите первый измеримый результат прямо в браузере.','hero.start':'Начать анализ','hero.upload':'Загрузить изображения','hero.meta1':'Проверка входных данных','hero.meta2':'Авто режим выбирает параметры','hero.meta3':'Результат можно сверить с прибором',
+    'preview.label':'РАБОЧИЙ СЦЕНАРИЙ','preview.demo':'ДЕМО','preview.sample':'ОДИН ОБРАЗЕЦ','preview.title':'Серия фото → результат','preview.time':'6 кадров · 10 мин','preview.input':'ВХОД','preview.series':'Серия кадров','preview.scene':'одна сцена и одинаковый свет','preview.check':'ПРОВЕРКА','preview.auto':'Авто режим','preview.signal':'сигнал и область образца','preview.output':'РЕЗУЛЬТАТ','preview.chart':'график для сравнения условий','preview.firstResult':'Первичная оценка','preview.pilot':'Пилот для учебной лаборатории',
+    'workflow.upload':'Загрузить изображения','workflow.uploadNote':'Добавьте серию снимков','workflow.compare':'Сравнить результат','workflow.compareNote':'Оригинал и обработка','workflow.read':'Прочитать анализ','workflow.readNote':'График и измеримые показатели',
+    'analysis.kicker':'РАБОЧАЯ ОБЛАСТЬ / 01','analysis.title':'Анализ образца','analysis.note':'Демо или собственная серия фотографий','output.kicker':'ИНТЕНСИВНОСТЬ ВО ВРЕМЕНИ','output.title':'Изменение цвета во времени','output.all':'ВСЕ СЕРИИ','output.compare':'Сравнить результаты','table.number':'№','table.experiment':'Эксперимент','table.k':'k, с⁻¹','table.half':'t₁/₂',
+    'method.kicker':'ДЕМО-АНАЛИЗ','method.title':'Получите результат в Word','method.copy':'Загрузите серию фотографий или откройте демо. На выходе — короткий отчёт с графиком, показателями и ограничениями метода.','method.step1':'Загрузите серию фото','method.step1copy':'Минимум два кадра одного образца, одна сцена и заданный интервал между снимками.','method.step2':'Мы проверим серию','method.step2copy':'Сервис проверит формат, размер, одинаковость сцены и устойчивость сигнала.','method.step3':'Получите расчёт','method.step3copy':'Авто режим выберет параметры и рассчитает динамику цвета, k и t½.','method.step4':'Скачайте Word-отчёт','method.step4copy':'Файл можно передать преподавателю, руководителю лаборатории или использовать для следующего опыта.','method.input':'ВХОД','method.check':'ПРОВЕРКА','method.signal':'РАСЧЁТ','method.output':'ОТЧЁТ','method.offerKicker':'ДЕМО-АНАЛИЗ','method.offerTitle':'Результат приходит Word-файлом','method.offerCopy':'В отчёте будут краткий вывод, параметры серии, график, основные показатели и ограничения метода.','method.disclaimer':'Сейчас это демонстрационная выдача. Реальную оплату подключим после фиксации цены и условий.','method.order':'Заказать демо-анализ','method.download':'Скачать пример отчёта','method.orderNote':'Сейчас кнопка показывает демо-сценарий: после получения серии фотографий клиент получает Word-отчёт. Для реальной оплаты нужно подключить цену и платёжную ссылку.','method.close':'Закрыть',
+    'audience.kicker':'КОМУ НУЖНО','audience.title':'Когда нужен быстрый первый результат','audience.copy':'Spectra помогает быстро проверить, меняется ли цвет образца, прежде чем занимать дорогой прибор или повторять опыт.','audience.schoollabel':'ДЛЯ УЧЕБНЫХ ЗАНЯТИЙ','audience.universitylabel':'ДЛЯ ПЕРВИЧНОЙ ПРОВЕРКИ','audience.userlabel':'ДЛЯ САМОСТОЯТЕЛЬНОЙ РАБОТЫ','audience.school':'Школа или STEM-центр','audience.schoolcopy':'Демонстрации, лабораторные и проектные работы без отдельного спектрофотометра.','audience.schooltag':'Занятия и проекты','audience.university':'Учебная лаборатория','audience.universitycopy':'Быстро сравнить серию и понять, какой опыт стоит проверить точным прибором.','audience.universitytag':'Пилот на реальных данных','audience.rnd':'Студент, преподаватель или школьник','audience.rndcopy':'Загрузить серию фото, проверить входные данные и получить ориентир по изменению цвета.','audience.rndtag':'Понятный сценарий',
+    'plans.kicker':'КАК ПОЛУЧИТЬ ОТЧЁТ','plans.title':'Сначала демо, потом доступ для команды','plans.copy':'Начните с одного демо-анализа на реальной серии фотографий. Если сценарий подходит, подключим класс или лабораторию.','plans.demo':'Демо-анализ','plans.democopy':'Загрузите серию и получите Word-отчёт с графиком и основными показателями.','plans.demoTag':'WORD-ФАЙЛ','plans.pilot':'Пилот лаборатории','plans.pilotcopy':'Проверим несколько серий, настроим рабочий сценарий и сверим результат с прибором.','plans.pilotTag':'ЗАПУСК','plans.team':'Доступ для команды','plans.teamcopy':'Доступ для класса, лаборатории или небольшой команды с общим рабочим процессом.','plans.teamTag':'ДЛЯ КОМАНДЫ',
+    'limits.kicker':'ЧТО ВАЖНО УЧЕСТЬ','limits.title':'Чтобы результату можно было доверять','limits.copy':'Spectra помогает быстро увидеть динамику цвета. Для точного или официального измерения результат нужно подтвердить прибором.','limits.one':'Камера, расстояние и освещение должны оставаться одинаковыми.','limits.two':'Авто режим помогает начать, но не заменяет контроль эксперимента.','limits.three':'Перед публикацией, сертификацией или важным решением результат нужно сверить со спектрофотометром.','footer.ready':'Добавьте эксперимент, чтобы начать','footer.caption':'Доступный анализ образца',
+    addPhotos:'＋ Добавить фотографии',demo:'Демо',demoName:'Демо-серия',seriesTitle:'Серия фотографий',seriesHint:'Минимум 2 кадра · одна сцена · одинаковое освещение.',validationHint:'Проверим формат, размер, одинаковую сцену и устойчивость сигнала.',noPhotos:'Нет фотографий',demoSynthetic:'Демо · синтетические данные',prev:'Предыдущее',next:'Следующее',play:'Пуск',pause:'Пауза',frame:'Кадр {n} из {total}',thumbCount:'← {middle} →\n{n} фото',analysisSettings:'Параметры анализа',interval:'Интервал между фото',channel:'Канал анализа',wavelength:'λ (нм):',threshold:'Настройка анализа',autoMode:'Авто режим',autoHint:'Авто режим выбирает канал, длину волны и порог. Интервал времени задаётся вами.',howCalculated:'Как это считается',rename:'Переименовать',delete:'Удалить эксперимент',viewOriginal:'Оригинал',viewMask:'Маска пятна',viewDetection:'Детекция',previewEyebrow:'ОТ СВЕТА К ДАННЫМ',previewHeading:'Образец под наблюдением',previewMode:'Режим просмотра',previewCaption:'Исходный кадр → выделение пятна → анализ',previewBrand:'Spectra / АНАЛИЗ',noSample:'Здесь появится ваш образец',noSampleHint:'Добавьте фотографии или откройте демо',metricK:'Константа k, с⁻¹',metricKNote:'Скорость изменения красителя',metricHalf:'Время t½',metricHalfNote:'Время снижения сигнала вдвое',ready:'Готово к анализу',loading:'Загрузка фотографий…',generating:'Генерация демо…',checking:'Проверка не пройдена',photoCount:'{n} фото',autoSelected:'Авто режим выбрал {label}.',experiment:'Эксперимент {n}',experimentPrefix:'Эксперимент №',notEnough:'Нужно ≥2 фото',noTrend:'Нет тренда',
+    minFrames:'Для расчёта кинетики нужно минимум 2 фотографии одной серии.',imageTooSmall:'Изображения слишком маленькие. Нужны кадры минимум 160×120 px.',brightness:'Яркость',colorChannel:'Цветовой канал по λ',saturation:'Насыщенность'
+  },
+  en: {
+    'header.caption':'IMAGE ANALYSIS','nav.workspace':'Analysis','nav.results':'Results','nav.method':'Demo report','nav.audience':'Who it is for','header.start':'Start analysis',
+    'hero.eyebrow':'SPECTRA / IMAGE WORKSPACE','hero.title':'From image to<br><span>insight.</span>','hero.copy':'Upload a series of images, compare the change in color and get a first measurable result in your browser.','hero.start':'Start analysis','hero.upload':'Upload images','hero.meta1':'Input check included','hero.meta2':'Auto mode selects parameters','hero.meta3':'Compare the result with an instrument',
+    'preview.label':'WORKSPACE PREVIEW','preview.demo':'DEMO','preview.sample':'ONE SAMPLE','preview.title':'Image series → result','preview.time':'6 frames · 10 min','preview.input':'INPUT','preview.series':'Image series','preview.scene':'one scene and same lighting','preview.check':'CHECK','preview.auto':'Auto mode','preview.signal':'signal and sample area','preview.output':'OUTPUT','preview.chart':'chart for comparing conditions','preview.firstResult':'First estimate','preview.pilot':'Pilot for a teaching lab',
+    'workflow.upload':'Upload images','workflow.uploadNote':'Add a series of frames','workflow.compare':'Compare result','workflow.compareNote':'Original and processed','workflow.read':'Read the analysis','workflow.readNote':'Chart and measurable metrics',
+    'analysis.kicker':'WORKSPACE / 01','analysis.title':'Sample analysis','analysis.note':'Demo or your own image series','output.kicker':'INTENSITY OVER TIME','output.title':'Color change over time','output.all':'ALL EXPERIMENTS','output.compare':'Compare results','table.number':'No.','table.experiment':'Experiment','table.k':'k, s⁻¹','table.half':'t₁/₂',
+    'method.kicker':'DEMO REPORT','method.title':'Get the result as a Word file','method.copy':'Upload a photo series or open the demo. The result is a short report with a chart, metrics and method limits.','method.step1':'Upload a photo series','method.step1copy':'At least two frames of the same sample, one scene and a defined interval between images.','method.step2':'We check the series','method.step2copy':'The service checks the format, size, scene consistency and signal stability.','method.step3':'Get the calculation','method.step3copy':'Auto mode chooses parameters and calculates color dynamics, k and t½.','method.step4':'Download the Word report','method.step4copy':'Share the file with a teacher or lab lead, or use it to choose the next experiment.','method.input':'INPUT','method.check':'CHECK','method.signal':'CALCULATION','method.output':'REPORT','method.offerKicker':'DEMO REPORT','method.offerTitle':'The result arrives as a Word file','method.offerCopy':'The report includes a short conclusion, series parameters, chart, key metrics and method limits.','method.disclaimer':'This is a demo delivery for now. Real payment will be connected after the price and terms are fixed.','method.order':'Order a demo analysis','method.download':'Download a sample report','method.orderNote':'This button shows the demo flow: after receiving a photo series, the client gets a Word report. Real payment still needs a price and payment link.','method.close':'Close',
+    'audience.kicker':'WHO NEEDS IT','audience.title':'When you need a quick first result','audience.copy':'Spectra helps check whether a sample is changing before taking time on an expensive instrument or repeating the experiment.','audience.schoollabel':'FOR TEACHING','audience.universitylabel':'FOR FIRST-PASS CHECKS','audience.userlabel':'FOR INDEPENDENT WORK','audience.school':'School or STEM center','audience.schoolcopy':'Demonstrations, lab classes and project work without a separate spectrophotometer.','audience.schooltag':'Teaching and projects','audience.university':'Teaching lab','audience.universitycopy':'Quickly compare a series and decide which experiment should be checked with a precise instrument.','audience.universitytag':'Pilot with real data','audience.rnd':'Student, teacher or pupil','audience.rndcopy':'Upload a photo series, check the input and get a first estimate of the color change.','audience.rndtag':'Clear workflow',
+    'plans.kicker':'GET THE REPORT','plans.title':'Start with a demo, then scale to a team','plans.copy':'Begin with one demo analysis on a real photo series. If the workflow fits, connect a class or lab.','plans.demo':'Demo analysis','plans.democopy':'Upload a series and receive a Word report with a chart and key metrics.','plans.demoTag':'WORD FILE','plans.pilot':'Lab pilot','plans.pilotcopy':'Review several series, configure the workflow and compare the result with an instrument.','plans.pilotTag':'START PILOT','plans.team':'Team access','plans.teamcopy':'Access for a class, lab or small team with one shared workflow.','plans.teamTag':'FOR A TEAM',
+    'limits.kicker':'WHAT TO KEEP IN MIND','limits.title':'What makes the result reliable','limits.copy':'Spectra helps you see color dynamics quickly. For precise or official measurement, confirm the result with an instrument.','limits.one':'Keep the camera, distance and lighting the same.','limits.two':'Auto mode helps you start, but does not replace experimental control.','limits.three':'Before publication, certification or an important decision, verify the result with a spectrophotometer.','footer.ready':'Add an experiment to begin','footer.caption':'Accessible sample analysis',
+    addPhotos:'＋ Add images',demo:'Demo',demoName:'Demo series',seriesTitle:'Image series',seriesHint:'At least 2 frames · one scene · same lighting.',validationHint:'We check the format, size, scene consistency and signal stability.',noPhotos:'No images',demoSynthetic:'Demo · synthetic data',prev:'Previous',next:'Next',play:'Play',pause:'Pause',frame:'Frame {n} of {total}',thumbCount:'← {middle} →\n{n} images',analysisSettings:'Analysis settings',interval:'Time between images',channel:'Analysis channel',wavelength:'λ (nm):',threshold:'Analysis threshold',autoMode:'Auto mode',autoHint:'Auto mode selects the channel, wavelength and threshold. Set the time interval yourself.',howCalculated:'How it works',rename:'Rename',delete:'Delete experiment',viewOriginal:'Original',viewMask:'Spot mask',viewDetection:'Detection',previewEyebrow:'FROM LIGHT TO DATA',previewHeading:'Sample under observation',previewMode:'View mode',previewCaption:'Original frame → spot mask → analysis',previewBrand:'Spectra / ANALYSIS',noSample:'Your sample will appear here',noSampleHint:'Add images or open the demo',metricK:'Rate constant k, s⁻¹',metricKNote:'Colorant change rate',metricHalf:'Half-life t½',metricHalfNote:'Time for the signal to drop by half',ready:'Ready to analyze',loading:'Loading images…',generating:'Generating demo…',checking:'Input check failed',photoCount:'{n} images',autoSelected:'Auto mode selected {label}.',experiment:'Experiment {n}',experimentPrefix:'Experiment no.',notEnough:'Need ≥2 images',noTrend:'No trend',minFrames:'Kinetics requires at least two images from one series.',imageTooSmall:'Images are too small. Frames must be at least 160×120 px.',brightness:'Brightness',colorChannel:'Color channel by λ',saturation:'Saturation'
+  }
+};
+I18N.ru['method.disclaimer'] = 'Сначала посмотрите пример отчёта, затем закажите анализ своей серии.';
+I18N.ru['method.orderNote'] = 'После получения серии фотографий вы получите Word-отчёт с графиком и основными показателями.';
+I18N.en['method.disclaimer'] = 'View the sample report first, then order an analysis of your own series.';
+I18N.en['method.orderNote'] = 'After receiving your photo series, you will get a Word report with a chart and key metrics.';
+I18N.ru['deleteConfirm'] = 'Удалить «{name}»?';
+I18N.en['deleteConfirm'] = 'Delete “{name}”?';
+I18N.ru['needMoreFrames'] = 'Добавьте ещё одну фотографию этой серии.';
+I18N.en['needMoreFrames'] = 'Add one more photo from the same series.';
+I18N.ru['frameQueueTitle'] = 'Кадры серии';
+I18N.en['frameQueueTitle'] = 'Series frames';
+I18N.ru['frameQueueCount'] = '{n} фото · порядок используется в расчёте';
+I18N.en['frameQueueCount'] = '{n} images · this order is used for analysis';
+I18N.ru['frameMoveLeft'] = 'Переместить кадр левее';
+I18N.en['frameMoveLeft'] = 'Move frame left';
+I18N.ru['frameMoveRight'] = 'Переместить кадр правее';
+I18N.en['frameMoveRight'] = 'Move frame right';
+I18N.ru['frameRemove'] = 'Удалить кадр';
+I18N.en['frameRemove'] = 'Remove frame';
+let currentLang = localStorage.getItem('spectra-lang') === 'en' ? 'en' : 'ru';
+function tr(key, vars = {}) {
+  let value = (I18N[currentLang] && I18N[currentLang][key]) || I18N.ru[key] || key;
+  return String(value).replace(/\{(\w+)\}/g, (_, name) => vars[name] === undefined ? `{${name}}` : vars[name]);
+}
+function applyStaticI18n() {
+  document.documentElement.lang = currentLang;
+  document.title = currentLang === 'en' ? 'Spectra — accessible color-change analysis' : 'Spectra — доступный анализ изменения цвета';
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = tr(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-lang]').forEach((el) => el.classList.toggle('active', el.dataset.lang === currentLang));
+}
+window.SpectraI18n = { get lang() { return currentLang; }, set(lang) { currentLang = lang === 'en' ? 'en' : 'ru'; localStorage.setItem('spectra-lang', currentLang); applyStaticI18n(); window.__app && window.__app.retranslate && window.__app.retranslate(); } };
 
 function h(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -119,6 +178,7 @@ class Spin {
     this.inp = h('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', spellcheck: 'false', 'aria-label': o.label || '' });
     const up = h('button', { type: 'button', tabindex: '-1', 'aria-label': '+' }, '▲');
     const dn = h('button', { type: 'button', tabindex: '-1', 'aria-label': '−' }, '▼');
+    this.buttons = [up, dn];
     this.el = h('div', { class: 'spin' }, this.inp, h('div', { class: 'sb' }, up, dn));
     this.show();
     this.inp.addEventListener('focus', () => setTimeout(() => this.inp.select(), 0));
@@ -147,6 +207,11 @@ class Spin {
     const nv = this.clampv(v), ch = nv !== this._v;
     this._v = nv; this.show();
     if (emit && ch) this.cb(nv);
+  }
+  setDisabled(disabled) {
+    this.inp.disabled = disabled;
+    this.buttons.forEach((button) => { button.disabled = disabled; });
+    this.el.classList.toggle('disabled', disabled);
   }
   commit() {
     const t = parseFloat(this.inp.value.replace(',', '.'));
@@ -197,7 +262,7 @@ const CH_ITEMS = ['Яркость', 'Цветовой канал по λ', 'На
 class Experiment {
   constructor() {
     this.custom = ''; this.frames = []; this.k = null; this.tHalf = null;
-    this.times = []; this.norm = []; this.pidx = 0; this.autoThr = null; this.timer = null; this.demoIdx = 0; this.isDemo = false;
+    this.times = []; this.norm = []; this.pidx = 0; this.autoThr = null; this.timer = null; this.demoIdx = 0; this.isDemo = false; this.autoMode = true; this.qualityNote = ''; this.qualityHint = '';
     this.raf = 0;
     this.build();
   }
@@ -205,67 +270,86 @@ class Experiment {
     const E = this;
     E.file = h('input', { type: 'file', multiple: '', accept: 'image/*,.tif,.tiff', hidden: '' });
     E.file.addEventListener('change', () => { const f = [...E.file.files]; E.file.value = ''; E.addFiles(f); });
-    E.btnAdd = h('button', { class: 'q accent', type: 'button', onclick: () => E.file.click() }, '＋ Добавить фотографии');
-    E.btnDemo = h('button', { class: 'q', type: 'button', title: 'Демо', onclick: () => E.demo() }, 'Демо');
+    E.btnAdd = h('button', { class: 'q accent', type: 'button', onclick: () => E.file.click() }, tr('addPhotos'));
+    E.btnDemo = h('button', { class: 'q', type: 'button', title: tr('demo'), onclick: () => E.demo() }, tr('demo'));
 
     E.tf = new Viewer(); E.tl = new Viewer();
     E.cnt = h('div', { class: 'cnt' });
-    E.bp = h('button', { class: 'q', type: 'button', 'aria-label': 'Предыдущее', onclick: () => E.nav(-1) }, '◀');
-    E.bn = h('button', { class: 'q', type: 'button', 'aria-label': 'Следующее', onclick: () => E.nav(1) }, '▶');
-    E.bPlay = h('button', { class: 'q', type: 'button', 'aria-label': 'Пуск', onclick: () => E.togglePlay() }, '⏵');
-    E.lblNav = h('div', { class: 'lbl' }, 'Фото: —');
+    E.bp = h('button', { class: 'q', type: 'button', 'aria-label': tr('prev'), onclick: () => E.nav(-1) }, '◀');
+    E.bn = h('button', { class: 'q', type: 'button', 'aria-label': tr('next'), onclick: () => E.nav(1) }, '▶');
+    E.bPlay = h('button', { class: 'q', type: 'button', 'aria-label': tr('play'), onclick: () => E.togglePlay() }, '⏵');
+    E.lblNav = h('div', { class: 'lbl' }, tr('frame', { n: '—', total: '—' }));
 
     E.spinDt = new Spin({ min: 0.1, max: 1e8, value: 60, dec: 1, suffix: ' с', step: 1, label: 'Δt', onChange: () => E.runIfReady() });
-    E.sel = h('select', { class: 'q grow', 'aria-label': 'Канал' }, CH_ITEMS.map((t, i) => h('option', { value: i }, t)));
+    E.sel = h('select', { class: 'q grow', 'aria-label': tr('channel') }, [tr('brightness'), tr('colorChannel'), tr('saturation')].map((t, i) => h('option', { value: i }, t)));
+    E.chOptions = [...E.sel.options];
     E.sel.addEventListener('change', () => E.onCh());
     E.spinWl = new Spin({ min: 300, max: 850, value: 440, dec: 0, suffix: ' нм', step: 1, label: 'λ', onChange: () => E.onWl() });
     E.sw = h('span', { class: 'sw' }, '■');
     E.warn = h('span', { class: 'warn' });
-    E.wlRow = h('div', { class: 'row wlrow' }, h('span', null, 'λ (нм):'), E.spinWl.el, E.sw, E.warn);
+    E.wlLabel = h('span', null, tr('wavelength'));
+    E.wlRow = h('div', { class: 'row wlrow' }, E.wlLabel, E.spinWl.el, E.sw, E.warn);
     E.rng = h('input', { class: 'rng grow', type: 'range', min: 1, max: 500, value: 50, 'aria-label': 'Порог OD' });
     E.rng.addEventListener('input', () => E.onThr());
     E.rng.addEventListener('change', () => E.onThrRelease());
     E.tv = h('span', { class: 'tv' }, '0.050');
-    E.chkIn = h('input', { type: 'checkbox', checked: '' });
+    E.chkIn = h('input', { type: 'checkbox', checked: '', 'aria-label': 'Авто режим' });
     E.chkIn.addEventListener('change', () => E.onAuto(E.chkIn.checked));
-    E.chk = h('label', { class: 'chk' }, E.chkIn, h('span', { class: 'bx' }), 'Авто');
+    E.autoText = h('span', null, tr('autoMode'));
+    E.chk = h('label', { class: 'chk' }, E.chkIn, h('span', { class: 'bx' }), E.autoText);
     E.rng.disabled = true; E.setRng(50);
 
     E.lblK = h('span', { class: 'result' }, '—');
     E.lblTh = h('span', { class: 'result' }, '—');
     E.info = h('div', { class: 'sci' });
-    E.btnDel = h('button', { class: 'q danger', type: 'button', onclick: () => App.del(E) }, 'Удалить эксперимент');
+    E.btnDel = h('button', { class: 'q danger', type: 'button', onclick: () => App.del(E) }, tr('delete'));
 
-    E.sourceBadge = h('span', { class: 'tag' }, 'Нет фотографий');
-    const upload = h('section', { class: 'upload-card' }, E.file,
-      h('div', { class: 'upload-heading' }, h('span', { class: 'step' }, '01'), h('span', null, 'Ваша серия фотографий'), E.sourceBadge),
-      h('div', { class: 'addrow' }, E.btnAdd, E.btnDemo),
-      h('p', { class: 'hint' }, 'Выберите серию кадров в порядке съёмки. Можно перетащить файлы сюда.'));
+    E.sourceBadge = h('span', { class: 'tag' }, tr('noPhotos'));
+    E.quality = h('p', { class: 'hint quality-note', hidden: '' });
+    E.uploadTitle = h('span', null, tr('seriesTitle'));
+    E.seriesHint = h('p', { class: 'hint' }, tr('seriesHint'));
+    E.validationHint = h('p', { class: 'hint validation-hint' }, tr('validationHint'));
+    E.frameQueue = h('div', { class: 'frame-queue', hidden: '' });
+    const upload = h('section', { class: 'upload-card', id: 'upload-card' }, E.file,
+      h('div', { class: 'upload-heading' }, h('span', { class: 'step' }, '01'), E.uploadTitle, E.sourceBadge),
+      h('div', { class: 'addrow' }, E.btnAdd),
+      E.seriesHint, E.validationHint, E.quality, E.frameQueue);
     const frames = h('section', { class: 'frames-card' },
       h('div', { class: 'thumbs' }, E.tf.el, E.cnt, E.tl.el),
       h('div', { class: 'nav' }, E.bp, E.lblNav, E.bn, E.bPlay));
+    E.settingsTitle = h('span', null, tr('analysisSettings'));
+    E.dtLabel = h('span', null, tr('interval'));
+    E.channelLabel = h('span', null, tr('channel'));
+    E.thresholdLabel = h('span', null, tr('threshold'));
+    E.autoHint = h('p', { class: 'hint' }, tr('autoHint'));
     const settings = h('details', { class: 'grp settings', open: '' },
-      h('summary', null, h('span', { class: 'step' }, '02'), 'Параметры анализа'),
+      h('summary', null, h('span', { class: 'step' }, '02'), E.settingsTitle),
       h('div', { class: 'col' },
-        h('div', { class: 'row' }, h('span', null, 'Интервал между фото'), E.spinDt.el),
-        h('div', { class: 'row' }, h('span', null, 'Канал анализа'), E.sel), E.wlRow,
-        h('div', { class: 'row threshold-row' }, h('span', null, 'Порог пятна'), E.tv, E.chk, E.rng),
-        h('p', { class: 'hint' }, 'Автопорог отделяет пятно от фона. Для ручной настройки отключите «Авто».')));
-    const science = h('details', { class: 'grp science' }, h('summary', null, 'Как это считается'),
+        h('div', { class: 'row' }, E.dtLabel, E.spinDt.el),
+        h('div', { class: 'row' }, E.channelLabel, E.sel), E.wlRow,
+        h('div', { class: 'row threshold-row' }, E.thresholdLabel, E.tv, E.chk, E.rng), E.autoHint));
+    E.scienceTitle = h('span', null, tr('howCalculated'));
+    E.scienceHint = h('p', { class: 'hint' }, currentLang === 'en' ? 'Use the same lighting and camera settings for every frame. A wavelength channel selects R, G or B; this is not a spectral measurement.' : 'Снимайте при одинаковом освещении и настройках камеры. Цветовой канал по λ выбирает R, G или B; это не спектральное измерение.');
+    const science = h('details', { class: 'grp science' }, h('summary', null, E.scienceTitle),
       h('div', { class: 'col' }, ['A = −log₁₀(I/I₀)', 'I₀ — 95-й перцентиль яркости фона и образца',
         'ln(⟨A⟩(t)/⟨A⟩(0)) = −k·t', 't₁/₂ = ln(2)/k'].map(t => h('div', { class: 'formula-l' }, t)),
-        h('p', { class: 'hint' }, 'Снимайте при одинаковом освещении и настройках камеры. Цветовой канал по λ выбирает R, G или B; это не спектральное измерение.')));
-    const metrics = h('div', { class: 'results', 'aria-label': 'Результаты выбранного эксперимента' },
-      h('div', { class: 'metric' }, h('span', { class: 'metric-label' }, 'Константа k, с⁻¹'), E.lblK, h('span', { class: 'metric-note' }, 'Скорость изменения красителя')),
-      h('div', { class: 'metric' }, h('span', { class: 'metric-label' }, 'Время t½'), E.lblTh, h('span', { class: 'metric-note' }, 'Время снижения сигнала вдвое')));
-    const rename = h('button', { class: 'q text-button', type: 'button', onclick: () => App.rename(App.exps.indexOf(E)) }, 'Переименовать');
-    const actions = h('div', { class: 'experiment-actions' }, rename, E.btnDel);
+        E.scienceHint));
+    E.metricKLabel = h('span', { class: 'metric-label' }, tr('metricK'));
+    E.metricKNote = h('span', { class: 'metric-note' }, tr('metricKNote'));
+    E.metricHalfLabel = h('span', { class: 'metric-label' }, tr('metricHalf'));
+    E.metricHalfNote = h('span', { class: 'metric-note' }, tr('metricHalfNote'));
+    const metrics = h('div', { class: 'results', 'aria-label': tr('analysisSettings') },
+      h('div', { class: 'metric' }, E.metricKLabel, E.lblK, E.metricKNote),
+      h('div', { class: 'metric' }, E.metricHalfLabel, E.lblTh, E.metricHalfNote));
+    E.renameButton = h('button', { class: 'q text-button', type: 'button', onclick: () => App.rename(App.exps.indexOf(E)) }, tr('rename'));
+    const actions = h('div', { class: 'experiment-actions' }, E.renameButton, E.btnDel);
     const left = h('div', { class: 'left' }, upload, metrics, frames, settings, science, actions);
 
     E.vo = new Viewer(); E.vm = new Viewer(); E.vr = new Viewer();
     E.vo.el.classList.add('active');
     const viewers = [E.vo, E.vm, E.vr];
-    const modes = ['Оригинал', 'Маска пятна', 'Детекция'];
+    const modeKeys = ['viewOriginal', 'viewMask', 'viewDetection'];
+    const modes = modeKeys.map((key) => tr(key));
     const modeButtons = modes.map((name, i) => h('button', {
       class: 'preview-mode' + (i === 0 ? ' active' : ''), type: 'button', 'aria-pressed': String(i === 0),
       onclick: () => {
@@ -273,15 +357,68 @@ class Experiment {
         modeButtons.forEach((btn, j) => { btn.classList.toggle('active', j === i); btn.setAttribute('aria-pressed', String(j === i)); });
       },
     }, name));
-    E.previewEmpty = h('div', { class: 'preview-empty' }, h('span', { 'aria-hidden': 'true' }, '◎'), h('strong', null, 'Здесь появится ваш образец'), h('span', null, 'Добавьте фотографии или откройте демо'));
+    E.emptyTitle = h('strong', null, tr('noSample'));
+    E.emptyHint = h('span', null, tr('noSampleHint'));
+    E.previewEmpty = h('div', { class: 'preview-empty' }, h('span', { 'aria-hidden': 'true' }, '◎'), E.emptyTitle, E.emptyHint);
+    E.previewEyebrow = h('span', { class: 'eyebrow' }, tr('previewEyebrow'));
+    E.previewHeading = h('h2', null, tr('previewHeading'));
+    E.previewCaption = h('span', null, tr('previewCaption'));
+    E.previewBrand = h('span', null, tr('previewBrand'));
     const prev = h('section', { class: 'prev' },
-      h('div', { class: 'preview-heading' }, h('div', null, h('span', { class: 'eyebrow' }, 'ОТ СВЕТА К ДАННЫМ'), h('h2', null, 'Образец под наблюдением')), h('span', { class: 'live-dot', 'aria-hidden': 'true' })),
-      h('div', { class: 'preview-modes', 'aria-label': 'Режим просмотра' }, modeButtons),
+      h('div', { class: 'preview-heading' }, h('div', null, E.previewEyebrow, E.previewHeading), h('span', { class: 'live-dot', 'aria-hidden': 'true' })),
+      h('div', { class: 'preview-modes', 'aria-label': tr('previewMode') }, modeButtons),
       h('div', { class: 'preview-stage' }, E.vo.el, E.vm.el, E.vr.el, E.previewEmpty),
-      h('div', { class: 'preview-caption' }, h('span', null, 'Исходный кадр → выделение пятна → анализ'), h('span', null, 'TiO₂ / LAB')),
+      h('div', { class: 'preview-caption' }, E.previewCaption, E.previewBrand),
       E.info);
+    E.modeButtons = modeButtons;
+    E.previewModes = prev.querySelector('.preview-modes');
     E.root = h('div', { class: 'exp-root', role: 'tabpanel' }, left, prev);
     E.updWl();
+    E.setModeUi(true);
+  }
+
+  retranslate() {
+    this.btnAdd.textContent = tr('addPhotos');
+    if (this.btnDemo) { this.btnDemo.textContent = tr('demo'); this.btnDemo.title = tr('demo'); }
+    this.bp.setAttribute('aria-label', tr('prev'));
+    this.bn.setAttribute('aria-label', tr('next'));
+    this.bPlay.setAttribute('aria-label', this.timer ? tr('pause') : tr('play'));
+    this.autoText.textContent = tr('autoMode');
+    this.uploadTitle.textContent = tr('seriesTitle');
+    this.seriesHint.textContent = tr('seriesHint');
+    this.validationHint.textContent = tr('validationHint');
+    this.sourceBadge.textContent = this.isDemo ? tr('demoSynthetic') : (this.frames.length ? tr('photoCount', { n: this.frames.length }) : tr('noPhotos'));
+    this.settingsTitle.textContent = tr('analysisSettings');
+    this.dtLabel.textContent = tr('interval');
+    this.channelLabel.textContent = tr('channel');
+    this.thresholdLabel.textContent = tr('threshold');
+    this.wlLabel.textContent = tr('wavelength');
+    this.spinDt.suffix = currentLang === 'en' ? ' s' : ' с';
+    this.spinWl.suffix = currentLang === 'en' ? ' nm' : ' нм';
+    this.spinDt.show();
+    this.spinWl.show();
+    this.sel.setAttribute('aria-label', tr('channel'));
+    [tr('brightness'), tr('colorChannel'), tr('saturation')].forEach((label, i) => { if (this.chOptions[i]) this.chOptions[i].textContent = label; });
+    this.autoHint.textContent = tr('autoHint');
+    this.scienceTitle.textContent = tr('howCalculated');
+    this.scienceHint.textContent = currentLang === 'en' ? 'Use the same lighting and camera settings for every frame. A wavelength channel selects R, G or B; this is not a spectral measurement.' : 'Снимайте при одинаковом освещении и настройках камеры. Цветовой канал по λ выбирает R, G или B; это не спектральное измерение.';
+    this.previewModes.setAttribute('aria-label', tr('previewMode'));
+    this.metricKLabel.textContent = tr('metricK');
+    this.metricKNote.textContent = tr('metricKNote');
+    this.metricHalfLabel.textContent = tr('metricHalf');
+    this.metricHalfNote.textContent = tr('metricHalfNote');
+    this.renameButton.textContent = tr('rename');
+    this.btnDel.textContent = tr('delete');
+    this.emptyTitle.textContent = tr('noSample');
+    this.emptyHint.textContent = tr('noSampleHint');
+    this.previewEyebrow.textContent = tr('previewEyebrow');
+    this.previewHeading.textContent = tr('previewHeading');
+    this.previewCaption.textContent = tr('previewCaption');
+    this.previewBrand.textContent = tr('previewBrand');
+    this.modeButtons.forEach((button, i) => { button.textContent = tr(['viewOriginal', 'viewMask', 'viewDetection'][i]); });
+    this.renderFrameQueue();
+    if (this.frames.length) { this.updThumbs(); this.updPrev(); }
+    if (this.tHalf !== null) this.lblTh.textContent = currentLang === 'en' ? C.fmtHalf(this.tHalf).replace('мин', 'min') : C.fmtHalf(this.tHalf);
   }
 
   /* ---- helpers ---- */
@@ -297,8 +434,122 @@ class Experiment {
   }
   applyParams(p) {
     this.spinDt.set(p.dt, false); this.sel.value = String(p.ch); this.spinWl.set(p.wl, false);
-    this.chkIn.checked = true; this.rng.disabled = true; this.setRng(50); this.tv.textContent = '0.050';
+    this.chkIn.checked = true; this.autoMode = true; this.setModeUi(true); this.setRng(50); this.tv.textContent = '0.050';
     this.wlRow.classList.toggle('on', p.ch === 1); this.updWl();
+  }
+
+  setModeUi(auto) {
+    this.autoMode = auto;
+    this.rng.disabled = auto;
+    this.sel.disabled = auto;
+    this.spinWl.setDisabled(auto);
+    this.wlRow.classList.toggle('auto-locked', auto);
+  }
+
+  setQuality(note) {
+    this.qualityHint = note || '';
+    this.renderQuality();
+  }
+
+  renderQuality(extra) {
+    this.qualityNote = [this.qualityHint, extra || ''].filter(Boolean).join(' ');
+    this.quality.textContent = this.qualityNote;
+    this.quality.hidden = !this.qualityNote;
+  }
+
+  renderFrameQueue() {
+    const queue = this.frameQueue;
+    queue.textContent = '';
+    queue.hidden = !this.frames.length;
+    if (!this.frames.length) return;
+    const head = h('div', { class: 'frame-queue-head' },
+      h('strong', null, tr('frameQueueTitle')),
+      h('span', null, tr('frameQueueCount', { n: this.frames.length })));
+    const grid = h('div', { class: 'frame-queue-grid' });
+    this.frames.forEach((fr, i) => {
+      const canvas = h('canvas', { class: 'frame-thumb', width: '112', height: '76' });
+      if (!fr.id) fr.id = new ImageData(fr.rgba, fr.w, fr.h);
+      const buffer = document.createElement('canvas');
+      buffer.width = fr.w; buffer.height = fr.h;
+      buffer.getContext('2d').putImageData(fr.id, 0, 0);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f1f3f8'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(buffer, 0, 0, canvas.width, canvas.height);
+      const left = h('button', { type: 'button', class: 'frame-action', 'aria-label': tr('frameMoveLeft'), title: tr('frameMoveLeft'), onclick: () => this.moveFrame(i, i - 1) }, '←');
+      const right = h('button', { type: 'button', class: 'frame-action', 'aria-label': tr('frameMoveRight'), title: tr('frameMoveRight'), onclick: () => this.moveFrame(i, i + 1) }, '→');
+      left.disabled = i === 0;
+      right.disabled = i === this.frames.length - 1;
+      const remove = h('button', { type: 'button', class: 'frame-action remove', 'aria-label': tr('frameRemove'), title: tr('frameRemove'), onclick: () => this.removeFrame(i) }, '×');
+      grid.append(h('article', { class: 'frame-item' }, canvas, h('span', { class: 'frame-index' }, String(i + 1).padStart(2, '0')), h('div', { class: 'frame-actions' }, left, right, remove)));
+    });
+    queue.append(head, grid);
+  }
+
+  moveFrame(from, to) {
+    if (to < 0 || to >= this.frames.length) return;
+    const [frame] = this.frames.splice(from, 1);
+    this.frames.splice(to, 0, frame);
+    this.pidx = clamp(this.pidx, 0, this.frames.length - 1);
+    this.autoThr = null;
+    this.renderFrameQueue(); this.updThumbs(); this.run();
+  }
+
+  removeFrame(index) {
+    if (index < 0 || index >= this.frames.length) return;
+    this.frames.splice(index, 1);
+    this.pidx = clamp(this.pidx, 0, Math.max(0, this.frames.length - 1));
+    this.autoThr = null;
+    this.sourceBadge.textContent = this.isDemo ? tr('demoSynthetic') : (this.frames.length ? tr('photoCount', { n: this.frames.length }) : tr('noPhotos'));
+    this.sourceBadge.classList.toggle('demo-badge', this.isDemo && this.frames.length > 0);
+    this.previewEmpty.hidden = !!this.frames.length;
+    this.setQuality(this.frames.length === 1 ? tr('needMoreFrames') : '');
+    this.renderFrameQueue();
+    if (this.frames.length) this.updThumbs();
+    else { this.tf.clear(); this.tl.clear(); this.lblNav.textContent = tr('frame', { n: '—', total: '—' }); this.info.textContent = ''; }
+    this.run();
+  }
+
+  validateSeries(frames) {
+    if (frames.length < 2) return { ok: false, error: 'Для расчёта кинетики нужно минимум 2 фотографии одной серии.' };
+    if (frames.some((fr) => fr.w < 160 || fr.h < 120)) return { ok: false, error: 'Изображения слишком маленькие. Нужны кадры минимум 160×120 px.' };
+    const ratios = frames.map((fr) => fr.w / fr.h);
+    const baseRatio = ratios[0];
+    if (ratios.some((ratio) => Math.abs(ratio - baseRatio) / baseRatio > 0.2)) return { ok: false, error: 'У кадров слишком разный формат. Загрузите одну серию без скриншотов и обрезок.' };
+    const stats = frames.map((fr) => {
+      const step = Math.max(1, Math.floor(fr.gray.length / 6000));
+      let n = 0, sum = 0, sq = 0, min = 255, max = 0, active = 0;
+      for (let i = 0; i < fr.gray.length; i += step) {
+        const v = fr.gray[i]; n++; sum += v; sq += v * v; min = Math.min(min, v); max = Math.max(max, v); if (v > BG_THRESHOLD) active++;
+      }
+      const mean = sum / Math.max(1, n);
+      return { sd: Math.sqrt(Math.max(0, sq / Math.max(1, n) - mean * mean)), range: max - min, active: active / Math.max(1, n) };
+    });
+    if (stats.every((s) => s.sd < 3 || s.range < 10)) return { ok: false, error: 'Похоже, это однотонные или пустые изображения. Загрузите фотографии образца.' };
+    const thumb = (fr) => {
+      const out = [];
+      for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
+        const x = Math.min(fr.w - 1, Math.floor((gx + .5) * fr.w / 8));
+        const y = Math.min(fr.h - 1, Math.floor((gy + .5) * fr.h / 8));
+        out.push(fr.gray[y * fr.w + x]);
+      }
+      return out;
+    };
+    const corr = (a, b) => {
+      const ma = a.reduce((s, v) => s + v, 0) / a.length, mb = b.reduce((s, v) => s + v, 0) / b.length;
+      let num = 0, da = 0, db = 0;
+      for (let i = 0; i < a.length; i++) { const va = a[i] - ma, vb = b[i] - mb; num += va * vb; da += va * va; db += vb * vb; }
+      return da && db ? num / Math.sqrt(da * db) : 1;
+    };
+    const thumbs = frames.map(thumb);
+    const stability = thumbs.slice(1).reduce((sum, current, i) => sum + corr(thumbs[i], current), 0) / Math.max(1, thumbs.length - 1);
+    if (stability < 0.28) return { ok: false, error: 'Кадры слишком разные. Загрузите серию одной сцены, а не случайные изображения.' };
+    const active = stats.map((s) => s.active);
+    const spread = Math.max(...active) - Math.min(...active);
+    const warnings = [];
+    if (spread > 0.45 || active.every((v) => v > 0.98 || v < 0.02)) warnings.push('Серия выглядит необычно. Проверьте, что на всех кадрах один и тот же образец и видна реакция.');
+    if (stability < 0.55) warnings.push('Кадры заметно отличаются друг от друга; результат может быть нестабильным.');
+    const warning = warnings.join(' ');
+    return { ok: true, warning };
   }
 
   /* ---- events ---- */
@@ -306,30 +557,45 @@ class Experiment {
     files = files.filter((f) => /^image\//.test(f.type) || /\.(png|jpe?g|bmp|tiff?|webp)$/i.test(f.name));
     if (!files.length) return;
     files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    App.status('Загрузка фотографий…');
+    App.status(tr('loading'));
     const frames = [];
     for (const f of files) { try { frames.push(await loadFrame(f)); } catch (e) { /* skip unreadable */ } }
     App.status(STATUS_IDLE);
     if (!frames.length) { alertBox('Не удалось открыть изображения'); return; }
-    this.isDemo = false; this.setFrames(frames);
+    const replacingDemo = this.isDemo;
+    const combined = replacingDemo ? frames : [...this.frames, ...frames];
+    let quality;
+    if (combined.some((fr) => fr.w < 160 || fr.h < 120)) {
+      quality = { ok: false, error: tr('imageTooSmall') };
+    } else if (combined.length < 2) {
+      quality = { ok: true, warning: tr('needMoreFrames') };
+    } else {
+      quality = this.validateSeries(combined);
+    }
+    if (!quality.ok) { App.status(tr('checking')); alertBox(quality.error); return; }
+    if (replacingDemo) this.custom = '';
+    this.isDemo = false; this.setQuality(quality.warning); this.setFrames(combined);
   }
   async demo() {
     const def = C.DEMOS[this.demoIdx++ % C.DEMOS.length];
-    App.status('Генерация демо…'); this.btnDemo.disabled = true;
+    App.status(tr('generating')); if (this.btnDemo) this.btnDemo.disabled = true;
     await tick();
     const frames = C.renderDemo(def);
-    this.btnDemo.disabled = false; App.status(STATUS_IDLE);
+    if (this.btnDemo) this.btnDemo.disabled = false; App.status(STATUS_IDLE);
     if (!this.custom) this.custom = def.name;
     this.applyParams({ dt: def.dt, ch: def.ch, wl: def.wl });
-    this.isDemo = true; this.setFrames(frames);
+    this.isDemo = true; this.setQuality(''); this.setFrames(frames);
     App.renderTabs();
   }
   setFrames(frames) {
     this.stop(); this.frames = frames; this.pidx = 0; this.autoThr = null;
-    this.sourceBadge.textContent = this.isDemo ? 'Демо · синтетические данные' : `${frames.length} фото`;
+    this.sourceBadge.textContent = this.isDemo ? tr('demoSynthetic') : tr('photoCount', { n: frames.length });
     this.sourceBadge.classList.toggle('demo-badge', this.isDemo);
     this.previewEmpty.hidden = !!frames.length;
-    this.updThumbs(); this.run();
+    this.renderFrameQueue();
+    this.updThumbs();
+    if (this.autoMode && !this.isDemo) this.autoTune();
+    this.run();
   }
   updThumbs() {
     if (!this.frames.length) return;
@@ -338,7 +604,7 @@ class Experiment {
     this.tf.setSize(w, hh); this.tl.setSize(w, hh);
     this.tf.setFrame(a); this.tl.setFrame(b);
     const n = this.frames.length;
-    this.cnt.textContent = `← ${Math.max(0, n - 2)} →\n${n} фото`;
+    this.cnt.textContent = tr('thumbCount', { middle: Math.max(0, n - 2), n });
   }
   nav(d) {
     if (!this.frames.length) return;
@@ -348,7 +614,7 @@ class Experiment {
   togglePlay() {
     if (this.timer) { this.stop(); return; }
     if (this.frames.length < 2) return;
-    this.bPlay.textContent = '⏸'; this.bPlay.setAttribute('aria-label', 'Пауза');
+    this.bPlay.textContent = '⏸'; this.bPlay.setAttribute('aria-label', tr('pause'));
     if (this.pidx >= this.frames.length - 1) this.pidx = -1;
     const step = () => {
       this.pidx = (this.pidx + 1) % this.frames.length;
@@ -359,8 +625,37 @@ class Experiment {
   }
   stop() {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
-    this.bPlay.textContent = '⏵'; this.bPlay.setAttribute('aria-label', 'Пуск');
+    this.bPlay.textContent = '⏵'; this.bPlay.setAttribute('aria-label', tr('play'));
   }
+
+  autoTune() {
+    if (this.frames.length < 2) return;
+    const candidates = [
+      { ch: 0, wl: 540, label: 'яркость' },
+      { ch: 1, wl: 450, label: 'синий канал' },
+      { ch: 1, wl: 540, label: 'зелёный канал' },
+      { ch: 1, wl: 660, label: 'красный канал' },
+      { ch: 2, wl: 540, label: 'насыщенность' },
+    ];
+    const scored = candidates.map((candidate) => {
+      const cp = candidate.ch === 0 ? ['gray', 0] : candidate.ch === 1 ? ['bgr', C.wavelengthToBgrIndex(candidate.wl)] : ['saturation', 0];
+      const values = this.frames.map((fr) => C.seriesValue(C.analyze(fr, cp[0], cp[1], 0, true)));
+      const first = values[0], last = values[values.length - 1];
+      const drop = first > 1e-8 ? (first - last) / first : -1;
+      let stable = 0;
+      for (let i = 1; i < values.length; i++) if (values[i] <= values[i - 1] * 1.08) stable++;
+      const monotonic = stable / Math.max(1, values.length - 1);
+      return { ...candidate, score: Math.max(0, drop) * 0.7 + monotonic * 0.3 };
+    }).sort((a, b) => b.score - a.score)[0];
+    this.sel.value = String(scored.ch);
+    this.spinWl.set(scored.wl, false);
+    this.wlRow.classList.toggle('on', scored.ch === 1);
+    this.updWl();
+    this.autoThr = null;
+    this.setAutoThreshold();
+    this.renderQuality(tr('autoSelected', { label: scored.label }));
+  }
+
   onCh() {
     const i = this.chIdx;
     this.wlRow.classList.toggle('on', i === 1);
@@ -398,9 +693,9 @@ class Experiment {
   }
   onThrRelease() { if (!this.auto) this.runIfReady(); }
   onAuto(checked) {
-    this.rng.disabled = checked;
+    this.setModeUi(checked);
     if (this.frames.length) {
-      if (checked) this.setAutoThreshold(); else this.autoThr = null;
+      if (checked) this.autoTune(); else this.autoThr = null;
       this.updPrev(); this.runIfReady();
     }
   }
@@ -425,7 +720,7 @@ class Experiment {
   updPrev() {
     if (!this.frames.length) return;
     const fr = this.frames[this.pidx];
-    this.lblNav.textContent = `Кадр ${this.pidx + 1} из ${this.frames.length}`;
+    this.lblNav.textContent = tr('frame', { n: this.pidx + 1, total: this.frames.length });
     const cp = this.chParams(); if (!cp) return;
     const thr = this.analysisThreshold();
     const r = C.analyze(fr, cp[0], cp[1], thr, false);
@@ -433,11 +728,11 @@ class Experiment {
     C.previewInto(fr, r, this.vm.data(fr.w, fr.h), this.vr.data(fr.w, fr.h));
     this.vm.commit(); this.vr.commit();
     this.tv.textContent = thr.toFixed(3);
-    this.info.textContent = `I₀=${r.I0.toFixed(1)} | <A>=${r.meanOd.toFixed(4)} | Пятно: ${(r.stainPct * 100).toFixed(1)}% | Порог: ${r.thr.toFixed(4)}`;
+    this.info.textContent = `I₀=${r.I0.toFixed(1)} | <A>=${r.meanOd.toFixed(4)} | ${currentLang === 'en' ? 'Spot' : 'Пятно'}: ${(r.stainPct * 100).toFixed(1)}% | ${currentLang === 'en' ? 'Threshold' : 'Порог'}: ${r.thr.toFixed(4)}`;
   }
   run() {
     if (this.frames.length < 2) {
-      this.lblK.textContent = 'Нужно ≥2 фото'; this.lblTh.textContent = '—';
+      this.lblK.textContent = tr('notEnough'); this.lblTh.textContent = '—';
       this.k = null; this.tHalf = null; this.times = []; this.norm = [];
       if (this.frames.length) this.updPrev();
       App.updRes(); return;
@@ -453,8 +748,8 @@ class Experiment {
     let kin = C.kinetics(mods, dt);
     if (kin.k === null || kin.k <= 0) kin = C.kinetics(modsFg, dt);
     this.k = kin.k; this.tHalf = kin.tHalf; this.times = kin.times; this.norm = kin.norm;
-    this.lblK.textContent = kin.k !== null ? C.fmtE(kin.k, 3) : 'Нет тренда';
-    this.lblTh.textContent = C.fmtHalf(kin.tHalf);
+    this.lblK.textContent = kin.k !== null ? C.fmtE(kin.k, 3) : tr('noTrend');
+    this.lblTh.textContent = currentLang === 'en' ? C.fmtHalf(kin.tHalf).replace('мин', 'min') : C.fmtHalf(kin.tHalf);
     this.updPrev(); App.updRes();
   }
   destroy() { this.stop(); this.root.remove(); }
@@ -502,7 +797,7 @@ class Plot {
       ctx.textAlign = 'center'; ctx.fillText(val.toFixed(0), x, mt + ph + 13);
     }
     ctx.fillStyle = '#667d76'; ctx.font = `12px ${sans}`; ctx.textAlign = 'center';
-    ctx.fillText('Время, с', ml + pw / 2, mt + ph + 38);
+    ctx.fillText(currentLang === 'en' ? 'Time, s' : 'Время, с', ml + pw / 2, mt + ph + 38);
     ctx.save(); ctx.translate(14, mt + ph / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('<A>(t)/<A>(0)', 0, 0); ctx.restore();
 
 
@@ -546,15 +841,21 @@ class Plot {
 /* ============================ app ============================ */
 const App = {
   exps: [], cur: -1, plot: null,
-  status(t) { $('#status').textContent = t; },
+  status(t) { $('#status').textContent = t || tr('ready'); },
   label(e, i) {
-    const base = `Эксперимент ${String(i + 1).padStart(2, '0')}`;
+    const base = tr('experiment', { n: String(i + 1).padStart(2, '0') });
     return e.custom ? `${base} — ${e.custom}` : base;
   },
   parseCustom(name) {
-    const prefix = 'Эксперимент №';
+    const prefix = tr('experimentPrefix');
     if (name.startsWith(prefix)) { const p = name.split(' — '); return p.length >= 2 ? p.slice(1).join(' — ').trim() : ''; }
     return name.trim();
+  },
+  retranslate() {
+    this.exps.forEach((e) => e.retranslate());
+    this.renderTabs();
+    this.updRes();
+    this.status('');
   },
   renderTabs() {
     const bar = $('#tabbar'); bar.textContent = '';
@@ -575,8 +876,13 @@ const App = {
         },
         onclick: () => this.activate(i), ondblclick: () => this.rename(i),
       }, t);
+      const remove = h('button', {
+        class: 'tab-delete', type: 'button', 'aria-label': `${tr('delete')}: ${t}`, title: tr('delete'),
+        onclick: ev => { ev.preventDefault(); ev.stopPropagation(); this.del(e); },
+      }, '×');
+      const item = h('div', { class: 'tab-wrap' }, el, remove);
       e.root.id = `experiment-${i}`; e.root.setAttribute('aria-labelledby', `tab-${i}`);
-      bar.append(el);
+      bar.append(item);
     });
     bar.append(h('button', { class: 'tab plus', type: 'button', 'data-t': '+', 'aria-label': 'Новый эксперимент', onclick: () => this.add() }, '+ Новый'));
     const sel = bar.querySelector('.sel');
@@ -596,7 +902,7 @@ const App = {
   async del(e) {
     const i = this.exps.indexOf(e);
     if (i < 0) return;
-    if (await confirmBox(`Удалить «${this.label(e, i)}»?`)) {
+    if (await confirmBox(tr('deleteConfirm', { name: this.label(e, i) }))) {
       e.destroy(); this.exps.splice(i, 1);
       this.activate(this.exps.length ? Math.min(i, this.exps.length - 1) : -1);
     }
@@ -611,24 +917,56 @@ const App = {
     const ds = [];
     this.exps.forEach((e, i) => {
       const color = COLORS[i % COLORS.length], name = this.label(e, i);
-      const ms = ['Яркость', `λ = ${e.spinWl.value.toFixed(0)} нм`, 'Насыщенность'][e.chIdx];
+      const ms = [tr('brightness'), `λ = ${e.spinWl.value.toFixed(0)} ${currentLang === 'en' ? 'nm' : 'нм'}`, tr('saturation')][e.chIdx];
       const td = (t, label) => h('td', { 'data-label': label }, t);
       rows.append(h('tr', { class: i === this.cur ? 'sel' : '', tabindex: '0', 'aria-label': `Открыть ${name}`, onclick: () => this.activate(i), onkeydown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); this.activate(i); } } },
-        td(String(i + 1).padStart(2, '0'), '№'),
-        td(h('span', { class: 'table-name' }, h('i', { style: `background:${color}` }), h('span', null, h('strong', null, e.custom || name), h('small', null, `${e.frames.length} фото · ${ms}`))), 'Эксперимент'),
-        td(e.k !== null ? C.fmtE(e.k, 4) : '—', 'k, с⁻¹'), td(C.fmtHalf(e.tHalf), 't₁/₂')));
+        td(String(i + 1).padStart(2, '0'), tr('table.number')),
+        td(h('span', { class: 'table-name' }, h('i', { style: `background:${color}` }), h('span', null, h('strong', null, e.custom || name), h('small', null, `${e.frames.length} ${currentLang === 'en' ? 'images' : 'фото'} · ${ms}`))), tr('table.experiment')),
+        td(e.k !== null ? C.fmtE(e.k, 4) : '—', 'k, s⁻¹'), td(currentLang === 'en' ? C.fmtHalf(e.tHalf).replace('мин', 'min') : C.fmtHalf(e.tHalf), 't₁/₂')));
       if (e.times.length && e.norm.length) ds.push({ name, color, times: e.times, areas: e.norm, exp: e });
     });
     $('#experiment-count').textContent = this.exps.length;
     const legend = $('#legend'); legend.textContent = '';
     ds.forEach(d => legend.append(h('span', { class: 'legend-item' }, h('i', { style: `background:${d.color}` }), d.exp.custom || d.name)));
-    if (!this.exps.length) rows.append(h('tr', { class: 'empty-row' }, h('td', { colspan: 4 }, 'Добавьте эксперимент — здесь появятся результаты.')));
+    if (!this.exps.length) rows.append(h('tr', { class: 'empty-row' }, h('td', { colspan: 4 }, tr('footer.ready'))));
     this.plot.set(ds);
   },
 };
 
 /* ============================ boot ============================ */
 function initChrome() {
+  document.querySelectorAll('[data-lang]').forEach((button) => {
+    button.addEventListener('click', () => window.SpectraI18n.set(button.dataset.lang));
+  });
+  const orderButton = $('[data-demo-order]');
+  if (orderButton) orderButton.addEventListener('click', async () => {
+    const choice = await dialog({
+      icon: '▣',
+      text: tr('method.orderNote'),
+      buttons: [
+        { label: tr('method.close'), value: false },
+        { label: tr('method.download'), value: 'download' },
+      ],
+    });
+    if (choice === 'download') {
+      const link = document.createElement('a');
+      link.href = 'demo-analysis-report.docx';
+      link.download = currentLang === 'en' ? 'Spectra_demo_analysis_report.docx' : 'Spectra_демо-анализ_отчёт.docx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+  });
+  const menu = $('.mobile-menu'), nav = $('.site-nav');
+  if (menu && nav) menu.addEventListener('click', () => {
+    const open = nav.classList.toggle('is-open');
+    menu.setAttribute('aria-expanded', String(open));
+  });
+  if (nav) nav.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+    nav.classList.remove('is-open');
+    if (menu) menu.setAttribute('aria-expanded', 'false');
+  }));
+
   /* drag & drop photos */
   let depth = 0;
   const hasFiles = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
@@ -655,6 +993,7 @@ function initChrome() {
 }
 
 async function boot() {
+  applyStaticI18n();
   App.plot = new Plot($('#plot'));
   initChrome();
   App.renderTabs(); App.updRes();
@@ -667,6 +1006,7 @@ async function boot() {
     e.demoIdx = i + 1;
   }
   App.activate(0);
+  App.retranslate();
   App.status(STATUS_IDLE);
 }
 window.__app = App;

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TiO₂ Photocatalytic Degradation Analyzer</title>
-<meta name="description" content="Анализ фотокаталитической деградации красителя на TiO₂ по фотографиям: оптическая плотность, кинетика первого порядка, k и t½ — прямо в браузере.">
-<meta name="theme-color" content="#f5f7f6">
-<meta property="og:title" content="TiO₂ Photocatalytic Degradation Analyzer">
-<meta property="og:description" content="Оптическая плотность, кинетика 1-го порядка, k и t½ по фотографиям — в браузере.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔬%3C/text%3E%3C/svg%3E">
+<title>Spectra — доступный анализ изменения цвета</title>
+<meta name="description" content="Spectra превращает серию фотографий эксперимента в первичную оценку динамики цвета прямо в браузере.">
+<meta name="theme-color" content="#f7f8fc">
+<meta property="og:title" content="Spectra — доступный анализ изменения цвета">
+<meta property="og:description" content="Первичная оценка изменения цвета по серии фотографий для учебных и небольших лабораторий.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23183d34'/%3E%3Cpath d='M50 16C38 32 26 43 26 59a24 24 0 0 0 48 0c0-16-12-27-24-43Z' fill='%23d6ec9e'/%3E%3Ccircle cx='50' cy='59' r='10' fill='%23147d64'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,32 +16,104 @@
 <div id="win">
   <div id="app">
     <header id="hdr">
-      <a class="brand" href="./" aria-label="TiO₂ Lab — главная"><span class="brand-icon" aria-hidden="true">◉</span><span>TiO₂<span class="brand-light"> / lab</span></span></a>
-      <span class="header-caption">Фотокаталитический анализ</span>
-      <span class="privacy"><span aria-hidden="true">●</span> Фото остаются на устройстве</span>
+      <a class="brand" href="./" aria-label="Spectra — главная"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 40 40" focusable="false"><path d="M8 28C12 18 17 12 21 12c5 0 7 7 11 0"></path><path d="M8 32h24"></path><circle cx="21" cy="12" r="3"></circle></svg></span><span>SPECTRA<span class="brand-dot">.</span></span></a>
+      <span class="header-caption" data-i18n="header.caption">АНАЛИЗ ИЗОБРАЖЕНИЙ</span>
+      <nav class="site-nav" aria-label="Разделы продукта">
+        <a class="nav-current" href="#analysis" data-i18n="nav.workspace">Анализ</a>
+        <a href="#output" data-i18n="nav.results">Результаты</a>
+        <a href="#method" data-i18n="nav.method">Демо-анализ</a>
+        <a href="#audience" data-i18n="nav.audience">Для кого</a>
+      </nav>
+      <div class="lang-switch" role="group" aria-label="Language"><button type="button" data-lang="ru" class="active">RU</button><span>/</span><button type="button" data-lang="en">EN</button></div>
+      <button class="mobile-menu" type="button" aria-label="Меню" aria-expanded="false"><span></span><span></span></button>
+      <a class="header-open" href="#analysis" data-i18n="header.start">Начать анализ</a>
     </header>
     <main>
-      <section class="intro" aria-labelledby="page-title">
-        <div><div class="eyebrow">ИЗОБРАЖЕНИЯ → ДАННЫЕ → ОТКРЫТИЯ</div><h1 id="page-title">Увидеть реакцию.<br><span>Измерить изменение.</span></h1><p>От серии фотографий — к скорости деградации красителя.<br class="desktop-br"> Загрузите кадры, настройте анализ и сравните эксперименты.</p></div>
-        <div class="intro-note"><span class="orbit" aria-hidden="true"><i></i><i></i><i></i></span><span>Маленькая лаборатория.<br><strong>Прямо в вашем браузере.</strong></span></div>
+      <section id="overview" class="intro" aria-labelledby="page-title">
+        <div class="intro-index" aria-hidden="true"><span>01 / OVERVIEW</span><i></i><small>IMAGE-BASED<br>ANALYSIS</small></div>
+        <div class="intro-copy">
+          <div class="eyebrow" data-i18n="hero.eyebrow">SPECTRA / IMAGE WORKSPACE</div>
+          <h1 id="page-title" data-i18n-html="hero.title">Смотрите, как меняется<br><span>цвет образца.</span></h1>
+          <p data-i18n="hero.copy">Загрузите серию снимков, сравните изменение цвета и получите первый измеримый результат прямо в браузере.</p>
+          <div class="hero-actions" aria-label="Быстрый старт">
+            <a class="hero-cta primary" href="#pane" data-i18n="hero.start">Начать анализ</a>
+            <a class="hero-cta secondary" href="#upload-card" data-i18n="hero.upload">Загрузить изображения</a>
+          </div>
+          <div class="hero-meta"><span><i aria-hidden="true">●</i><span data-i18n="hero.meta1">3 эксперимента проверены</span></span><span><i aria-hidden="true">●</i><span data-i18n="hero.meta2">Авто режим выбирает параметры</span></span><span><i aria-hidden="true">●</i><span data-i18n="hero.meta3">Результат можно сверить с прибором</span></span></div>
+        </div>
+        <aside class="hero-figure sample-card" aria-label="Рабочий сценарий анализа">
+          <div class="figure-head"><span data-i18n="preview.label">WORKSPACE PREVIEW</span><span class="sample-status" data-i18n="preview.demo">DEMO</span></div>
+          <div class="sample-title"><div><span class="sample-kicker" data-i18n="preview.sample">ONE SAMPLE</span><strong data-i18n="preview.title">Серия фото → результат</strong></div><span class="sample-time" data-i18n="preview.time">6 кадров · 10 мин</span></div>
+          <div class="sample-grid">
+            <div class="sample-block"><span data-i18n="preview.input">INPUT</span><strong data-i18n="preview.series">Серия кадров</strong><small data-i18n="preview.scene">одна сцена и одинаковый свет</small></div>
+            <div class="sample-block"><span data-i18n="preview.check">CHECK</span><strong data-i18n="preview.auto">Авто режим</strong><small data-i18n="preview.signal">сигнал и область образца</small></div>
+            <div class="sample-block sample-block-wide"><span data-i18n="preview.output">OUTPUT</span><strong class="sample-number">A / A₀ · k · t½</strong><small data-i18n="preview.chart">график для сравнения условий</small></div>
+          </div>
+          <div class="sample-chart" aria-hidden="true"><span class="chart-y">A/A₀</span><svg viewBox="0 0 420 120" preserveAspectRatio="none"><path d="M24 20V96H408" fill="none" stroke="#d4e1d7"/><path d="M28 30C82 34 94 45 135 46s58 18 92 20 48 16 76 17 57 9 100 11" fill="none" stroke="#197b70" stroke-width="3" stroke-linecap="round"/><circle cx="28" cy="30" r="4" fill="#d6ec9e"/><circle cx="403" cy="94" r="4" fill="#197b70"/></svg></div>
+          <div class="sample-foot"><span><i aria-hidden="true">●</i> <span data-i18n="preview.firstResult">Первичная оценка</span></span><span data-i18n="preview.pilot">Пилот для учебной лаборатории</span></div>
+        </aside>
       </section>
-      <div id="split">
+      <nav class="workflow-strip" aria-label="Последовательность анализа">
+        <a class="workflow-step" href="#upload-card"><strong>01</strong><span><b data-i18n="workflow.upload">Загрузить изображения</b><small data-i18n="workflow.uploadNote">Добавьте серию снимков</small></span></a>
+        <i aria-hidden="true">→</i>
+        <a class="workflow-step" href="#output"><strong>02</strong><span><b data-i18n="workflow.compare">Сравнить результат</b><small data-i18n="workflow.compareNote">Оригинал и обработка</small></span></a>
+        <i aria-hidden="true">→</i>
+        <a class="workflow-step" href="#method"><strong>03</strong><span><b data-i18n="workflow.read">Прочитать анализ</b><small data-i18n="workflow.readNote">График и измеримые показатели</small></span></a>
+      </nav>
+      <div id="split" class="analysis-section">
         <section id="top" aria-label="Анализ эксперимента">
-          <div class="section-line"><h2>Рабочая область</h2><span>Начните с демо или добавьте свои фото</span></div>
+          <div class="section-line"><div><span class="section-number" data-i18n="analysis.kicker">WORKSPACE / 01</span><h2 id="analysis" data-i18n="analysis.title">Анализ образца</h2></div><span data-i18n="analysis.note">Демо или собственная серия фотографий</span></div>
           <div id="tabbar" role="tablist" aria-label="Эксперименты"></div>
           <div id="pane" tabindex="-1"></div>
         </section>
         <section id="bottom" aria-label="Сравнение результатов">
-          <section class="grp fill chart-card"><div class="card-heading"><div><span class="eyebrow">ДИНАМИКА ПРОЦЕССА</span><h2>Кинетика деградации</h2></div><span class="tag">A / A₀</span></div><div class="plotwrap"><canvas id="plot" role="img" aria-label="График нормированной оптической плотности по времени. Численные результаты находятся в таблице экспериментов."></canvas></div><div id="legend" class="legend" aria-label="Легенда графика"></div></section>
-          <section class="grp fill comparison-card"><div class="card-heading"><div><span class="eyebrow">ВСЕ ЭКСПЕРИМЕНТЫ</span><h2>Сравнение результатов</h2></div><span id="experiment-count" class="tag">0</span></div><div class="tblwrap"><table class="res"><caption class="sr-only">Константа скорости и время полураспада для каждого эксперимента</caption><colgroup><col style="width:34px"><col><col style="width:110px"><col style="width:94px"></colgroup><thead><tr><th scope="col">№</th><th scope="col">Эксперимент</th><th scope="col">k, с⁻¹</th><th scope="col">t₁/₂</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+          <section id="output" class="grp fill chart-card"><div class="card-heading"><div><span class="eyebrow" data-i18n="output.kicker">INTENSITY OVER TIME</span><h2 data-i18n="output.title">Изменение цвета во времени</h2></div><span class="tag">A / A₀</span></div><div class="plotwrap"><canvas id="plot" role="img" aria-label="График нормированной оптической плотности по времени. Численные результаты находятся в таблице экспериментов."></canvas></div><div id="legend" class="legend" aria-label="Легенда графика"></div></section>
+          <section class="grp fill comparison-card"><div class="card-heading"><div><span class="eyebrow" data-i18n="output.all">ALL EXPERIMENTS</span><h2 data-i18n="output.compare">Сравнить результаты</h2></div><span id="experiment-count" class="tag">0</span></div><div class="tblwrap"><table class="res"><caption class="sr-only">Константа скорости и время полураспада для каждого эксперимента</caption><colgroup><col style="width:34px"><col><col style="width:110px"><col style="width:94px"></colgroup><thead><tr><th scope="col" data-i18n="table.number">№</th><th scope="col" data-i18n="table.experiment">Эксперимент</th><th scope="col" data-i18n="table.k">k, с⁻¹</th><th scope="col" data-i18n="table.half">t₁/₂</th></tr></thead><tbody id="rows"></tbody></table></div></section>
         </section>
       </div>
+      <section id="method" class="product-section method-section" aria-label="Демо-анализ">
+        <div class="section-heading"><span class="section-number" data-i18n="method.kicker">ДЕМО-АНАЛИЗ</span><h2 data-i18n="method.title">Получите результат в Word</h2><p data-i18n="method.copy">Загрузите серию фотографий или откройте демо. На выходе — короткий отчёт с графиком, показателями и ограничениями метода.</p></div>
+        <div class="how-list">
+          <div class="how-row"><span>01</span><div><strong data-i18n="method.step1">Загрузите серию фото</strong><p data-i18n="method.step1copy">Минимум два кадра одного образца, одна сцена и заданный интервал между снимками.</p></div><b data-i18n="method.input">ВХОД</b></div>
+          <div class="how-row"><span>02</span><div><strong data-i18n="method.step2">Мы проверим серию</strong><p data-i18n="method.step2copy">Сервис проверит формат, размер, одинаковость сцены и устойчивость сигнала.</p></div><b data-i18n="method.check">ПРОВЕРКА</b></div>
+          <div class="how-row"><span>03</span><div><strong data-i18n="method.step3">Получите расчёт</strong><p data-i18n="method.step3copy">Авто режим выберет параметры и рассчитает динамику цвета, k и t½.</p></div><b data-i18n="method.signal">РАСЧЁТ</b></div>
+          <div class="how-row"><span>04</span><div><strong data-i18n="method.step4">Скачайте Word-отчёт</strong><p data-i18n="method.step4copy">Файл можно передать преподавателю, руководителю лаборатории или использовать для следующего опыта.</p></div><b data-i18n="method.output">ОТЧЁТ</b></div>
+        </div>
+        <div class="demo-offer">
+          <div class="demo-offer-copy"><span class="section-number" data-i18n="method.offerKicker">ДЕМО-АНАЛИЗ</span><h3 data-i18n="method.offerTitle">Результат приходит Word-файлом</h3><p data-i18n="method.offerCopy">В отчёте будут краткий вывод, параметры серии, график, основные показатели и ограничения метода.</p><small data-i18n="method.disclaimer">Сначала посмотрите пример отчёта, затем закажите анализ своей серии.</small></div>
+          <div class="demo-offer-actions"><button class="hero-cta primary" type="button" data-demo-order data-i18n="method.order">Заказать демо-анализ</button><a class="hero-cta secondary" href="demo-analysis-report.docx" download data-i18n="method.download">Скачать пример отчёта</a></div>
+        </div>
+      </section>
+      <section id="audience" class="product-section audience-section" aria-label="Для кого подходит продукт">
+        <div class="section-heading"><span class="section-number" data-i18n="audience.kicker">КОМУ НУЖНО</span><h2 data-i18n="audience.title">Когда нужен быстрый первый результат</h2><p data-i18n="audience.copy">Spectra помогает быстро проверить, меняется ли цвет образца, прежде чем занимать дорогой прибор или повторять опыт.</p></div>
+        <div class="audience-list">
+          <div class="audience-row"><span class="audience-role" data-i18n="audience.schoollabel">ДЛЯ УЧЕБНЫХ ЗАНЯТИЙ</span><strong data-i18n="audience.school">Школа или STEM-центр</strong><p data-i18n="audience.schoolcopy">Демонстрации, лабораторные и проектные работы без отдельного спектрофотометра.</p><em data-i18n="audience.schooltag">Занятия и проекты</em></div>
+          <div class="audience-row"><span class="audience-role" data-i18n="audience.universitylabel">ДЛЯ ПЕРВИЧНОЙ ПРОВЕРКИ</span><strong data-i18n="audience.university">Учебная лаборатория</strong><p data-i18n="audience.universitycopy">Быстро сравнить серию и понять, какой опыт стоит проверить точным прибором.</p><em data-i18n="audience.universitytag">Пилот на реальных данных</em></div>
+          <div class="audience-row"><span class="audience-role" data-i18n="audience.userlabel">ДЛЯ САМОСТОЯТЕЛЬНОЙ РАБОТЫ</span><strong data-i18n="audience.rnd">Студент, преподаватель или школьник</strong><p data-i18n="audience.rndcopy">Загрузить серию фото, проверить входные данные и получить ориентир по изменению цвета.</p><em data-i18n="audience.rndtag">Понятный сценарий</em></div>
+        </div>
+      </section>
+      <section id="plans" class="product-section plans-section" aria-label="Как начать">
+        <div class="section-heading"><span class="section-number" data-i18n="plans.kicker">КАК НАЧАТЬ</span><h2 data-i18n="plans.title">Начните с проверки на своих данных</h2><p data-i18n="plans.copy">Откройте демо, загрузите собственную серию и только потом решайте, нужен ли доступ для класса или лаборатории.</p></div>
+        <div class="plans-list">
+          <div class="plan-row"><span>01</span><div><strong data-i18n="plans.demo">Демо</strong><p data-i18n="plans.democopy">Открытый пример и базовый анализ, чтобы понять сценарий до покупки.</p></div><b data-i18n="plans.demoTag">БЕСПЛАТНО</b></div>
+          <div class="plan-row featured"><span>02</span><div><strong data-i18n="plans.pilot">Пилот</strong><p data-i18n="plans.pilotcopy">Пилот для учебной или небольшой лаборатории. Настраиваем входные данные и сверяем результат с прибором.</p></div><b data-i18n="plans.pilotTag">ЗАПУСК</b></div>
+          <div class="plan-row"><span>03</span><div><strong data-i18n="plans.team">Доступ для команды</strong><p data-i18n="plans.teamcopy">Доступ для класса, лаборатории или небольшой команды с общим рабочим процессом.</p></div><b data-i18n="plans.teamTag">ДЛЯ КОМАНДЫ</b></div>
+        </div>
+      </section>
+      <section id="limits" class="product-section limits-section" aria-label="Ограничения метода">
+        <div class="section-heading"><span class="section-number" data-i18n="limits.kicker">ЧТО ВАЖНО УЧЕСТЬ</span><h2 data-i18n="limits.title">Чтобы результату можно было доверять</h2><p data-i18n="limits.copy">Spectra помогает быстро увидеть динамику цвета. Для точного или официального измерения результат нужно подтвердить прибором.</p></div>
+        <ul class="limits-list">
+          <li data-i18n="limits.one">Камера, расстояние и освещение должны оставаться одинаковыми.</li>
+          <li data-i18n="limits.two">Авто режим помогает начать, но не заменяет контроль эксперимента.</li>
+          <li data-i18n="limits.three">Перед публикацией, сертификацией или важным решением результат нужно сверить со спектрофотометром.</li>
+        </ul>
+      </section>
     </main>
-    <footer><span id="status" role="status">Добавьте эксперимент, чтобы начать</span><span>TiO₂ Lab <span class="footer-dot">·</span> Свет. Цвет. Наука.</span></footer>
+    <footer><span id="status" role="status" data-i18n="footer.ready">Добавьте эксперимент, чтобы начать</span><span>Spectra <span class="footer-dot">·</span> <span data-i18n="footer.caption">Доступный анализ образца</span></span></footer>
   </div>
 </div>
 <div id="modal"></div>
-<script src="core.js"></script>
-<script src="app.js"></script>
+<script src="core.js?rev=8"></script>
+<script src="app.js?rev=13"></script>
 </body>
 </html>

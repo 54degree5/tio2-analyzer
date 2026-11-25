@@ -1,4 +1,4 @@
-/* TiO2 Photocatalytic Degradation Analyzer — core (port of SpotAnalyzer + demo frames) */
+/* Spectra visual sample analyzer — core (port of SpotAnalyzer + demo frames) */
 (function (root) {
 'use strict';
 
@@ -227,9 +227,7 @@ function stainMap(w, h, rng) {
 }
 
 const DEMOS = [
-  { name: 'Метиленовый синий', eps: [1.0, 0.40, 0.10], c0: 1.30, k: 1.05e-3, dt: 300, ch: 1, wl: 660, seed: 11 },
-  { name: 'Родамин B', eps: [0.10, 1.0, 0.30], c0: 1.20, k: 6.5e-4, dt: 480, ch: 0, wl: 540, seed: 23 },
-  { name: 'Метилоранж', eps: [0.04, 0.34, 1.0], c0: 1.15, k: 1.9e-3, dt: 120, ch: 1, wl: 450, seed: 37 },
+  { name: 'Демо-серия', eps: [1.0, 0.40, 0.10], c0: 1.30, k: 1.05e-3, dt: 300, ch: 1, wl: 660, seed: 11 },
 ];
 
 function renderDemo(def, n, w, h) {
