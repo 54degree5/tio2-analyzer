@@ -54,6 +54,24 @@ I18N.ru['frameMoveRight'] = 'Переместить кадр правее';
 I18N.en['frameMoveRight'] = 'Move frame right';
 I18N.ru['frameRemove'] = 'Удалить кадр';
 I18N.en['frameRemove'] = 'Remove frame';
+Object.assign(I18N.ru, {
+  validationHint: 'Проверим, что сцена совпадает и область образца заметно меняется.',
+  flatFrame: 'Среди кадров есть однотонное изображение или кадр без различимых деталей.',
+  shapeMismatch: 'Пропорции кадров различаются. Выберите исходные фото одной серии без обрезки.',
+  differentScene: 'Сцена или ракурс меняются между кадрами. Выберите фото одного образца, снятые с неподвижной камеры.',
+  noLocalSignal: 'Изменение в области образца слишком слабое. Выберите кадры с различимым изменением цвета или яркости при одинаковом освещении.',
+  unreadablePhotos: 'Не удалось открыть «{name}». Проверьте файл или сохраните его в JPG, PNG или WebP.',
+  rejectedPhotos: 'Серия не добавлена. {reason}',
+});
+Object.assign(I18N.en, {
+  validationHint: 'We check that the scene matches and that the sample area visibly changes.',
+  flatFrame: 'One of the frames is a solid color or has no discernible detail.',
+  shapeMismatch: 'The frames have different proportions. Choose uncropped photos from one series.',
+  differentScene: 'The scene or camera angle changes between frames. Choose photos of one sample taken with a fixed camera.',
+  noLocalSignal: 'The change in the sample area is too weak. Choose frames with a discernible change in color or brightness under consistent lighting.',
+  unreadablePhotos: 'Could not open “{name}”. Check the file or save it as JPG, PNG, or WebP.',
+  rejectedPhotos: 'Series rejected. {reason}',
+});
 let currentLang = localStorage.getItem('spectra-lang') === 'en' ? 'en' : 'ru';
 function tr(key, vars = {}) {
   let value = (I18N[currentLang] && I18N[currentLang][key]) || I18N.ru[key] || key;
@@ -262,8 +280,11 @@ const CH_ITEMS = ['Яркость', 'Цветовой канал по λ', 'На
 class Experiment {
   constructor() {
     this.custom = ''; this.frames = []; this.k = null; this.tHalf = null;
-    this.times = []; this.norm = []; this.pidx = 0; this.autoThr = null; this.timer = null; this.demoIdx = 0; this.isDemo = false; this.autoMode = true; this.qualityNote = ''; this.qualityHint = '';
+    this.times = []; this.norm = []; this.pidx = 0; this.autoThr = null; this.timer = null; this.demoIdx = 0; this.isDemo = false; this.autoMode = true; this.autoChoice = null;
     this.raf = 0;
+    this.seriesCheck = 'needMoreFrames';
+    this.loadingPhotos = false;
+    this.importIssue = null;
     this.build();
   }
   build() {
@@ -305,7 +326,8 @@ class Experiment {
     E.btnDel = h('button', { class: 'q danger', type: 'button', onclick: () => App.del(E) }, tr('delete'));
 
     E.sourceBadge = h('span', { class: 'tag' }, tr('noPhotos'));
-    E.quality = h('p', { class: 'hint quality-note', hidden: '' });
+    E.quality = h('p', { class: 'hint quality-note', role: 'status', hidden: '' });
+    E.importStatus = h('p', { class: 'hint quality-note', role: 'status', hidden: '' });
     E.uploadTitle = h('span', null, tr('seriesTitle'));
     E.seriesHint = h('p', { class: 'hint' }, tr('seriesHint'));
     E.validationHint = h('p', { class: 'hint validation-hint' }, tr('validationHint'));
@@ -313,7 +335,7 @@ class Experiment {
     const upload = h('section', { class: 'upload-card', id: 'upload-card' }, E.file,
       h('div', { class: 'upload-heading' }, h('span', { class: 'step' }, '01'), E.uploadTitle, E.sourceBadge),
       h('div', { class: 'addrow' }, E.btnAdd),
-      E.seriesHint, E.validationHint, E.quality, E.frameQueue);
+      E.seriesHint, E.validationHint, E.importStatus, E.quality, E.frameQueue);
     const frames = h('section', { class: 'frames-card' },
       h('div', { class: 'thumbs' }, E.tf.el, E.cnt, E.tl.el),
       h('div', { class: 'nav' }, E.bp, E.lblNav, E.bn, E.bPlay));
@@ -375,6 +397,7 @@ class Experiment {
     E.root = h('div', { class: 'exp-root', role: 'tabpanel' }, left, prev);
     E.updWl();
     E.setModeUi(true);
+    E.modeButtons.slice(1).forEach((button) => { button.disabled = true; });
   }
 
   retranslate() {
@@ -416,6 +439,8 @@ class Experiment {
     this.previewCaption.textContent = tr('previewCaption');
     this.previewBrand.textContent = tr('previewBrand');
     this.modeButtons.forEach((button, i) => { button.textContent = tr(['viewOriginal', 'viewMask', 'viewDetection'][i]); });
+    this.renderImportStatus();
+    this.renderCheck();
     this.renderFrameQueue();
     if (this.frames.length) { this.updThumbs(); this.updPrev(); }
     if (this.tHalf !== null) this.lblTh.textContent = currentLang === 'en' ? C.fmtHalf(this.tHalf).replace('мин', 'min') : C.fmtHalf(this.tHalf);
@@ -446,15 +471,26 @@ class Experiment {
     this.wlRow.classList.toggle('auto-locked', auto);
   }
 
-  setQuality(note) {
-    this.qualityHint = note || '';
-    this.renderQuality();
+  renderImportStatus() {
+    const issue = this.importIssue;
+    const text = this.loadingPhotos ? tr('loading') : issue ? tr('rejectedPhotos', { reason: tr(issue.key, issue.vars) }) : '';
+    this.importStatus.textContent = text;
+    this.importStatus.hidden = !text;
+    this.importStatus.classList.toggle('quality-error', !this.loadingPhotos && !!issue);
   }
 
-  renderQuality(extra) {
-    this.qualityNote = [this.qualityHint, extra || ''].filter(Boolean).join(' ');
-    this.quality.textContent = this.qualityNote;
-    this.quality.hidden = !this.qualityNote;
+  renderCheck() {
+    let text = '';
+    if (this.frames.length && this.seriesCheck) text = tr(this.seriesCheck);
+    else if (this.autoChoice) text = tr('autoSelected', { label: this.autoChoice[currentLang] });
+    this.quality.textContent = text;
+    this.quality.hidden = !text;
+    this.quality.classList.toggle('quality-error', !!this.seriesCheck && this.seriesCheck !== 'needMoreFrames');
+  }
+
+  updateSeriesCheck() {
+    this.seriesCheck = this.isDemo && this.frames.length >= 2 ? '' : C.checkPhotoSeries(this.frames);
+    this.renderCheck();
   }
 
   renderFrameQueue() {
@@ -491,6 +527,7 @@ class Experiment {
     this.frames.splice(to, 0, frame);
     this.pidx = clamp(this.pidx, 0, this.frames.length - 1);
     this.autoThr = null;
+    this.updateSeriesCheck();
     this.renderFrameQueue(); this.updThumbs(); this.run();
   }
 
@@ -502,81 +539,53 @@ class Experiment {
     this.sourceBadge.textContent = this.isDemo ? tr('demoSynthetic') : (this.frames.length ? tr('photoCount', { n: this.frames.length }) : tr('noPhotos'));
     this.sourceBadge.classList.toggle('demo-badge', this.isDemo && this.frames.length > 0);
     this.previewEmpty.hidden = !!this.frames.length;
-    this.setQuality(this.frames.length === 1 ? tr('needMoreFrames') : '');
+    this.updateSeriesCheck();
     this.renderFrameQueue();
     if (this.frames.length) this.updThumbs();
     else { this.tf.clear(); this.tl.clear(); this.lblNav.textContent = tr('frame', { n: '—', total: '—' }); this.info.textContent = ''; }
     this.run();
   }
 
-  validateSeries(frames) {
-    if (frames.length < 2) return { ok: false, error: 'Для расчёта кинетики нужно минимум 2 фотографии одной серии.' };
-    if (frames.some((fr) => fr.w < 160 || fr.h < 120)) return { ok: false, error: 'Изображения слишком маленькие. Нужны кадры минимум 160×120 px.' };
-    const ratios = frames.map((fr) => fr.w / fr.h);
-    const baseRatio = ratios[0];
-    if (ratios.some((ratio) => Math.abs(ratio - baseRatio) / baseRatio > 0.2)) return { ok: false, error: 'У кадров слишком разный формат. Загрузите одну серию без скриншотов и обрезок.' };
-    const stats = frames.map((fr) => {
-      const step = Math.max(1, Math.floor(fr.gray.length / 6000));
-      let n = 0, sum = 0, sq = 0, min = 255, max = 0, active = 0;
-      for (let i = 0; i < fr.gray.length; i += step) {
-        const v = fr.gray[i]; n++; sum += v; sq += v * v; min = Math.min(min, v); max = Math.max(max, v); if (v > BG_THRESHOLD) active++;
-      }
-      const mean = sum / Math.max(1, n);
-      return { sd: Math.sqrt(Math.max(0, sq / Math.max(1, n) - mean * mean)), range: max - min, active: active / Math.max(1, n) };
-    });
-    if (stats.every((s) => s.sd < 3 || s.range < 10)) return { ok: false, error: 'Похоже, это однотонные или пустые изображения. Загрузите фотографии образца.' };
-    const thumb = (fr) => {
-      const out = [];
-      for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
-        const x = Math.min(fr.w - 1, Math.floor((gx + .5) * fr.w / 8));
-        const y = Math.min(fr.h - 1, Math.floor((gy + .5) * fr.h / 8));
-        out.push(fr.gray[y * fr.w + x]);
-      }
-      return out;
-    };
-    const corr = (a, b) => {
-      const ma = a.reduce((s, v) => s + v, 0) / a.length, mb = b.reduce((s, v) => s + v, 0) / b.length;
-      let num = 0, da = 0, db = 0;
-      for (let i = 0; i < a.length; i++) { const va = a[i] - ma, vb = b[i] - mb; num += va * vb; da += va * va; db += vb * vb; }
-      return da && db ? num / Math.sqrt(da * db) : 1;
-    };
-    const thumbs = frames.map(thumb);
-    const stability = thumbs.slice(1).reduce((sum, current, i) => sum + corr(thumbs[i], current), 0) / Math.max(1, thumbs.length - 1);
-    if (stability < 0.28) return { ok: false, error: 'Кадры слишком разные. Загрузите серию одной сцены, а не случайные изображения.' };
-    const active = stats.map((s) => s.active);
-    const spread = Math.max(...active) - Math.min(...active);
-    const warnings = [];
-    if (spread > 0.45 || active.every((v) => v > 0.98 || v < 0.02)) warnings.push('Серия выглядит необычно. Проверьте, что на всех кадрах один и тот же образец и видна реакция.');
-    if (stability < 0.55) warnings.push('Кадры заметно отличаются друг от друга; результат может быть нестабильным.');
-    const warning = warnings.join(' ');
-    return { ok: true, warning };
-  }
-
   /* ---- events ---- */
   async addFiles(files) {
-    files = files.filter((f) => /^image\//.test(f.type) || /\.(png|jpe?g|bmp|tiff?|webp)$/i.test(f.name));
-    if (!files.length) return;
-    files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    App.status(tr('loading'));
-    const frames = [];
-    for (const f of files) { try { frames.push(await loadFrame(f)); } catch (e) { /* skip unreadable */ } }
-    App.status(STATUS_IDLE);
-    if (!frames.length) { alertBox('Не удалось открыть изображения'); return; }
-    const replacingDemo = this.isDemo;
-    const combined = replacingDemo ? frames : [...this.frames, ...frames];
-    let quality;
-    if (combined.some((fr) => fr.w < 160 || fr.h < 120)) {
-      quality = { ok: false, error: tr('imageTooSmall') };
-    } else if (combined.length < 2) {
-      quality = { ok: true, warning: tr('needMoreFrames') };
-    } else {
-      quality = this.validateSeries(combined);
+    if (!files.length || this.loadingPhotos) return;
+    this.loadingPhotos = true;
+    this.btnAdd.disabled = true;
+    this.importIssue = null;
+    this.renderImportStatus();
+    try {
+      const ordered = [...files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      const frames = [];
+      for (const file of ordered) {
+        try {
+          if (!/^image\//.test(file.type) && !/\.(png|jpe?g|bmp|tiff?|webp)$/i.test(file.name)) throw new TypeError();
+          frames.push(await loadFrame(file));
+        } catch {
+          this.importIssue = { key: 'unreadablePhotos', vars: { name: file.name } };
+          return;
+        }
+        if (!this.root.isConnected) return;
+      }
+      const replacingDemo = this.isDemo;
+      const combined = replacingDemo ? frames : [...this.frames, ...frames];
+      const check = C.checkPhotoSeries(combined);
+      if (check && check !== 'needMoreFrames') {
+        this.importIssue = { key: check };
+        return;
+      }
+      if (replacingDemo) this.custom = '';
+      this.isDemo = false;
+      this.setFrames(combined);
+      if (replacingDemo) App.renderTabs();
+    } finally {
+      this.loadingPhotos = false;
+      this.btnAdd.disabled = false;
+      this.renderImportStatus();
     }
-    if (!quality.ok) { App.status(tr('checking')); alertBox(quality.error); return; }
-    if (replacingDemo) this.custom = '';
-    this.isDemo = false; this.setQuality(quality.warning); this.setFrames(combined);
   }
   async demo() {
+    if (this.loadingPhotos) return;
+    this.importIssue = null; this.renderImportStatus();
     const def = C.DEMOS[this.demoIdx++ % C.DEMOS.length];
     App.status(tr('generating')); if (this.btnDemo) this.btnDemo.disabled = true;
     await tick();
@@ -584,11 +593,12 @@ class Experiment {
     if (this.btnDemo) this.btnDemo.disabled = false; App.status(STATUS_IDLE);
     if (!this.custom) this.custom = def.name;
     this.applyParams({ dt: def.dt, ch: def.ch, wl: def.wl });
-    this.isDemo = true; this.setQuality(''); this.setFrames(frames);
+    this.isDemo = true; this.setFrames(frames);
     App.renderTabs();
   }
   setFrames(frames) {
-    this.stop(); this.frames = frames; this.pidx = 0; this.autoThr = null;
+    this.stop(); this.frames = frames; this.pidx = 0; this.autoThr = null; this.autoChoice = null;
+    this.updateSeriesCheck();
     this.sourceBadge.textContent = this.isDemo ? tr('demoSynthetic') : tr('photoCount', { n: frames.length });
     this.sourceBadge.classList.toggle('demo-badge', this.isDemo);
     this.previewEmpty.hidden = !!frames.length;
@@ -629,13 +639,13 @@ class Experiment {
   }
 
   autoTune() {
-    if (this.frames.length < 2) return;
+    if (this.seriesCheck) return;
     const candidates = [
-      { ch: 0, wl: 540, label: 'яркость' },
-      { ch: 1, wl: 450, label: 'синий канал' },
-      { ch: 1, wl: 540, label: 'зелёный канал' },
-      { ch: 1, wl: 660, label: 'красный канал' },
-      { ch: 2, wl: 540, label: 'насыщенность' },
+      { ch: 0, wl: 540, label: { ru: 'яркость', en: 'brightness' } },
+      { ch: 1, wl: 450, label: { ru: 'синий канал', en: 'the blue channel' } },
+      { ch: 1, wl: 540, label: { ru: 'зелёный канал', en: 'the green channel' } },
+      { ch: 1, wl: 660, label: { ru: 'красный канал', en: 'the red channel' } },
+      { ch: 2, wl: 540, label: { ru: 'насыщенность', en: 'saturation' } },
     ];
     const scored = candidates.map((candidate) => {
       const cp = candidate.ch === 0 ? ['gray', 0] : candidate.ch === 1 ? ['bgr', C.wavelengthToBgrIndex(candidate.wl)] : ['saturation', 0];
@@ -653,7 +663,8 @@ class Experiment {
     this.updWl();
     this.autoThr = null;
     this.setAutoThreshold();
-    this.renderQuality(tr('autoSelected', { label: scored.label }));
+    this.autoChoice = scored.label;
+    this.renderCheck();
   }
 
   onCh() {
@@ -695,7 +706,8 @@ class Experiment {
   onAuto(checked) {
     this.setModeUi(checked);
     if (this.frames.length) {
-      if (checked) this.autoTune(); else this.autoThr = null;
+      if (checked) this.autoTune();
+      else { this.autoThr = null; this.autoChoice = null; this.renderCheck(); }
       this.updPrev(); this.runIfReady();
     }
   }
@@ -703,7 +715,7 @@ class Experiment {
 
   /* ---- analysis ---- */
   setAutoThreshold() {
-    if (!this.frames.length) return;
+    if (this.seriesCheck) return;
     const cp = this.chParams(); if (!cp) return;
     const r = C.analyze(this.frames[this.pidx], cp[0], cp[1], 0, true);
     this.autoThr = r.thr;
@@ -721,20 +733,27 @@ class Experiment {
     if (!this.frames.length) return;
     const fr = this.frames[this.pidx];
     this.lblNav.textContent = tr('frame', { n: this.pidx + 1, total: this.frames.length });
+    this.vo.setFrame(fr);
+    if (this.seriesCheck) {
+      this.vm.clear(); this.vr.clear(); this.info.textContent = '';
+      return;
+    }
     const cp = this.chParams(); if (!cp) return;
     const thr = this.analysisThreshold();
     const r = C.analyze(fr, cp[0], cp[1], thr, false);
-    this.vo.setFrame(fr);
     C.previewInto(fr, r, this.vm.data(fr.w, fr.h), this.vr.data(fr.w, fr.h));
     this.vm.commit(); this.vr.commit();
     this.tv.textContent = thr.toFixed(3);
     this.info.textContent = `I₀=${r.I0.toFixed(1)} | <A>=${r.meanOd.toFixed(4)} | ${currentLang === 'en' ? 'Spot' : 'Пятно'}: ${(r.stainPct * 100).toFixed(1)}% | ${currentLang === 'en' ? 'Threshold' : 'Порог'}: ${r.thr.toFixed(4)}`;
   }
   run() {
-    if (this.frames.length < 2) {
-      this.lblK.textContent = tr('notEnough'); this.lblTh.textContent = '—';
+    this.modeButtons.slice(1).forEach((button) => { button.disabled = !!this.seriesCheck; });
+    if (this.seriesCheck) {
+      this.modeButtons[0].click();
+      this.lblK.textContent = '—'; this.lblTh.textContent = '—';
       this.k = null; this.tHalf = null; this.times = []; this.norm = [];
       if (this.frames.length) this.updPrev();
+      else { this.vo.clear(); this.vm.clear(); this.vr.clear(); }
       App.updRes(); return;
     }
     const cp = this.chParams(); if (!cp) return;

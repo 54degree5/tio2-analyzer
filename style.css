@@ -930,9 +930,20 @@ button.q.accent:hover {
 }
 
 .quality-note {
-  margin-bottom:0;
-  color:#8a6a2c;
-  font-size:10px
+  margin-bottom: 0;
+  font-size: .875rem;
+}
+
+.quality-error {
+  border-left: 3px solid #b42318;
+  padding: 8px 10px;
+  background: #fff3f0;
+  color: #8f1a13;
+}
+
+.preview-mode:disabled {
+  opacity: .55;
+  cursor: default;
 }
 
 .frame-queue {

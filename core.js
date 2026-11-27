@@ -175,6 +175,86 @@ function fmtHalf(th) {
   return (th / 3600).toFixed(2) + ' ч';
 }
 
+/* ---------- photo series validation (before optical-density analysis) ---------- */
+const CHECK_GRID = 24;
+const checkCache = new WeakMap();
+
+function photoProfile(frame) {
+  if (checkCache.has(frame)) return checkCache.get(frame);
+  const cells = [];
+  let darkest = 255, brightest = 0;
+  for (let y = 0; y < CHECK_GRID; y++) for (let x = 0; x < CHECK_GRID; x++) {
+    const rgb = [0, 0, 0];
+    const left = Math.floor(x * frame.w / CHECK_GRID);
+    const right = Math.floor((x + 1) * frame.w / CHECK_GRID);
+    const top = Math.floor(y * frame.h / CHECK_GRID);
+    const bottom = Math.floor((y + 1) * frame.h / CHECK_GRID);
+    let count = 0;
+    for (let row = top; row < bottom; row += 2) for (let col = left; col < right; col += 2) {
+      const i = (row * frame.w + col) * 4;
+      for (let c = 0; c < 3; c++) rgb[c] += frame.rgba[i + c];
+      count++;
+    }
+    const [r, g, b] = rgb.map((value) => value / count);
+    const light = .299 * r + .587 * g + .114 * b;
+    darkest = Math.min(darkest, light);
+    brightest = Math.max(brightest, light);
+    cells.push([light, r - g, b - g]);
+  }
+
+  const edges = [];
+  for (let i = 0; i < cells.length; i++) {
+    if (i % CHECK_GRID) edges.push(cells[i][0] - cells[i - 1][0]);
+    if (i >= CHECK_GRID) edges.push(cells[i][0] - cells[i - CHECK_GRID][0]);
+  }
+  const profile = {
+    cells, edges, range: brightest - darkest,
+    edgeNorm: Math.sqrt(edges.reduce((sum, value) => sum + value * value, 0)),
+  };
+  checkCache.set(frame, profile);
+  return profile;
+}
+
+function sceneSimilarity(a, b) {
+  const dot = a.edges.reduce((sum, edge, i) => sum + edge * b.edges[i], 0);
+  return dot / Math.max(1, a.edgeNorm * b.edgeNorm);
+}
+
+function relativeSignal(a, b) {
+  for (let channel = 0; channel < 3; channel++) {
+    const differences = a.cells.map((cell, i) => b.cells[i][channel] - cell[channel]);
+    const sorted = differences.slice().sort((x, y) => x - y);
+    const background = sorted[Math.floor(sorted.length / 2)];
+    // A localized 2×2 patch must change in one direction relative to the bulk of the image.
+    // Subtracting the median keeps a frame-wide exposure or white-balance offset from being the signal.
+    for (let i = 0; i < differences.length - CHECK_GRID; i++) {
+      if (i % CHECK_GRID === CHECK_GRID - 1) continue;
+      const patch = [i, i + 1, i + CHECK_GRID, i + CHECK_GRID + 1]
+        .map((j) => differences[j] - background);
+      if (patch.every((value) => value >= 7) || patch.every((value) => value <= -7)) return true;
+    }
+  }
+  return false;
+}
+
+function checkPhotoSeries(frames) {
+  if (frames.some((fr) => fr.w < 160 || fr.h < 120)) return 'imageTooSmall';
+  const profiles = frames.map(photoProfile);
+  if (profiles.some((profile) => profile.range < 12)) return 'flatFrame';
+  if (frames.length < 2) return 'needMoreFrames';
+
+  const ratios = frames.map((frame) => frame.w / frame.h);
+  if (Math.max(...ratios) / Math.min(...ratios) > 1.15) return 'shapeMismatch';
+
+  const base = profiles[0];
+  let signal = false;
+  for (const profile of profiles.slice(1)) {
+    if (sceneSimilarity(base, profile) < .63) return 'differentScene';
+    signal ||= relativeSignal(base, profile);
+  }
+  return signal ? '' : 'noLocalSignal';
+}
+
 /* ---------- synthetic demo frames (Beer–Lambert per channel) ---------- */
 function mulberry32(a) {
   return function () {
@@ -268,7 +348,7 @@ function renderDemo(def, n, w, h) {
 const Core = {
   BG_THRESHOLD, EXPERIMENT_COLORS, DEMOS,
   wavelengthToRgb, wavelengthToBgrIndex, makeFrame, computeOd, autoThreshold, analyze, seriesValue,
-  previewInto, kinetics, fmtE, fmtHalf, renderDemo,
+  previewInto, kinetics, fmtE, fmtHalf, renderDemo, checkPhotoSeries,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
 else root.Core = Core;
